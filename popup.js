@@ -1,4 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
+  // Sequence id to track latest inspection request and ignore stale results
+  let _locatorRequestSeq = 0;
   const typeSelect = document.getElementById("type");
   const locatorInput = document.getElementById("locator");
   const inspectBtn = document.getElementById("inspectBtn");
@@ -70,6 +72,7 @@ document.addEventListener("DOMContentLoaded", function () {
           chrome.scripting.executeScript({
             target: { tabId: activeTab.id },
             func: clearOverlays,
+            world: "MAIN",
           });
         }
       } catch (error) {
@@ -92,14 +95,64 @@ document.addEventListener("DOMContentLoaded", function () {
         throw new Error("No active tab found");
       }
 
-      // Inject content script and execute inspection
-      const results = await chrome.scripting.executeScript({
+      // New request id for this invocation
+      _locatorRequestSeq += 1;
+      const thisRequestId = _locatorRequestSeq;
+
+      // Set the request id in the page (engine and injector are preloaded as content scripts)
+      await chrome.scripting.executeScript({
         target: { tabId: activeTab.id },
-        func: inspectLocator,
-        args: [locator, type],
+        func: (id) => {
+          if (typeof window.__locatorInspect === "function") {
+            window.__locatorInspect.__lastRequestId = id;
+          }
+        },
+        args: [thisRequestId],
+        world: "MAIN",
       });
 
-      const result = results[0].result;
+      // Call the injected inspector in the page context and pass the request id
+      // Wrap the call in try/catch inside the page so we always get a structured result
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: activeTab.id },
+        func: (locator, type, reqId) => {
+          try {
+            const res = window.__locatorInspect(locator, type, reqId);
+            return { ok: true, value: res };
+          } catch (e) {
+            return { ok: false, error: String(e), stack: e && e.stack };
+          }
+        },
+        args: [locator, type, thisRequestId],
+        world: "MAIN",
+      });
+
+      const pageResp = results && results[0] && results[0].result;
+
+      // Ignore stale results: only act on the latest request
+      if (thisRequestId !== _locatorRequestSeq) {
+        // A newer request started — ignore this result
+        return;
+      }
+
+      if (!pageResp) {
+        showResult("No result from page", "error");
+        return;
+      }
+
+      if (!pageResp.ok) {
+        // Page-side function threw — surface the error
+        console.error("Page inspector error:", pageResp.error, pageResp.stack);
+        showResult(`Page error: ${pageResp.error}`, "error");
+        return;
+      }
+
+      const result = pageResp.value;
+
+      if (!result) {
+        showResult("Inspector returned no data", "error");
+        return;
+      }
 
       if (result.error) {
         showResult(`Error: ${result.error}`, "error");
@@ -211,90 +264,22 @@ function inspectLocator(locator, type) {
 
     switch (type) {
       case "css":
-        elements = Array.from(document.querySelectorAll(locator));
+        findByCss(locator).forEach((el) => elements.push(el));
         break;
 
       case "xpath":
-        const xpathResult = document.evaluate(
-          locator,
-          document,
-          null,
-          XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
-          null
-        );
-        for (let i = 0; i < xpathResult.snapshotLength; i++) {
-          elements.push(xpathResult.snapshotItem(i));
-        }
+        findByXPath(locator).forEach((el) => elements.push(el));
         break;
 
       case "playwright":
         // For playwright, we'll provide basic support for common methods
-        if (locator.includes("getByRole")) {
-          const roleMatch = locator.match(/getByRole\(['"]([^'"]+)['"]\)/);
-          if (roleMatch) {
-            const role = roleMatch[1];
-            elements = Array.from(
-              document.querySelectorAll(`[role="${role}"]`)
-            );
-            // Also check for implicit roles
-            if (role === "button") {
-              elements.push(
-                ...Array.from(
-                  document.querySelectorAll(
-                    'button, input[type="button"], input[type="submit"]'
-                  )
-                )
-              );
-            } else if (role === "textbox") {
-              elements.push(
-                ...Array.from(
-                  document.querySelectorAll(
-                    'input[type="text"], input[type="email"], input[type="password"], textarea'
-                  )
-                )
-              );
-            }
-          }
-        } else if (locator.includes("getByText")) {
-          const textMatch = locator.match(/getByText\(['"]([^'"]+)['"]\)/);
-          if (textMatch) {
-            const text = textMatch[1];
-            elements = Array.from(document.querySelectorAll("*")).filter(
-              (el) => {
-                const textContent = el.textContent && el.textContent.trim();
-                const hasChildren =
-                  el.children.length === 0 ||
-                  Array.from(el.children).every(
-                    (child) =>
-                      !child.textContent ||
-                      !child.textContent.trim().includes(text)
-                  );
-                return textContent && textContent.includes(text) && hasChildren;
-              }
-            );
-          }
-        } else if (locator.includes("getByTestId")) {
-          const testIdMatch = locator.match(/getByTestId\(['"]([^'"]+)['"]\)/);
-          if (testIdMatch) {
-            const testId = testIdMatch[1];
-            elements = Array.from(
-              document.querySelectorAll(
-                `[data-testid="${testId}"], [data-test-id="${testId}"], [data-cy="${testId}"]`
-              )
-            );
-          }
-        } else {
-          return {
-            error:
-              "Unsupported Playwright locator format. Supported: getByRole(), getByText(), getByTestId()",
-          };
-        }
+        findByPlaywright(locator).forEach((el) => elements.push(el));
         break;
 
       case "smart":
         // Parse smart locator with pseudo-selectors
         try {
-          elements = parseSmartLocator(locator);
+          findBySmartLocator(locator).forEach((el) => elements.push(el));
         } catch (error) {
           return { error: `Smart locator error: ${error.message}` };
         }
@@ -487,322 +472,6 @@ function inspectLocator(locator, type) {
       if (elements.length > 5) {
         details += `\n\n... and ${elements.length - 5} more elements`;
       }
-    }
-
-    // Function to parse smart locators with custom pseudo-selectors
-    function parseSmartLocator(locator) {
-      let elements = [];
-
-      // Handle :has() pseudo-selector with nested conditions
-      if (locator.includes(":has(")) {
-        // More robust parsing for :has() with complex base selectors
-        const hasIndex = locator.indexOf(":has(");
-        const baseSelector = locator.substring(0, hasIndex);
-
-        // Find the matching closing parenthesis
-        let depth = 0;
-        let hasEndIndex = -1;
-        for (let i = hasIndex + 5; i < locator.length; i++) {
-          if (locator[i] === "(") depth++;
-          else if (locator[i] === ")") {
-            if (depth === 0) {
-              hasEndIndex = i;
-              break;
-            }
-            depth--;
-          }
-        }
-
-        if (hasEndIndex === -1) {
-          throw new Error(
-            "Invalid :has() syntax - missing closing parenthesis"
-          );
-        }
-
-        const hasContent = locator.substring(hasIndex + 5, hasEndIndex);
-        const afterSelector = locator.substring(hasEndIndex + 1);
-
-        // Get base elements - handle CSS combinators properly
-        let baseElements;
-        try {
-          baseElements = baseSelector
-            ? Array.from(document.querySelectorAll(baseSelector))
-            : Array.from(document.querySelectorAll("*"));
-        } catch (error) {
-          throw new Error(`Invalid base selector: ${baseSelector}`);
-        }
-
-        elements = baseElements.filter((el) => {
-          // Parse the content inside :has()
-          if (hasContent.includes(":has-text(")) {
-            // Handle nested :has-text() inside :has()
-            const hasTextMatch = hasContent.match(
-              /^([^:]*):has-text\(['"]([^'"]+)['"]\)(.*)$/
-            );
-            if (hasTextMatch) {
-              const [, innerSelector, text, innerAfter] = hasTextMatch;
-              let innerElements;
-              try {
-                innerElements = innerSelector
-                  ? Array.from(el.querySelectorAll(innerSelector))
-                  : Array.from(el.querySelectorAll("*"));
-              } catch (error) {
-                return false;
-              }
-
-              return innerElements.some((innerEl) => {
-                const textContent =
-                  innerEl.textContent && innerEl.textContent.trim();
-                let matchesText = textContent && textContent.includes(text);
-
-                // Apply additional conditions after :has-text()
-                if (matchesText && innerAfter && innerAfter.trim()) {
-                  try {
-                    matchesText = innerEl.matches(innerAfter.trim());
-                  } catch {
-                    matchesText = false;
-                  }
-                }
-                return matchesText;
-              });
-            }
-          } else if (hasContent.includes(":text-is(")) {
-            // Handle nested :text-is() inside :has()
-            const textIsMatch = hasContent.match(
-              /^([^:]*):text-is\(['"]([^'"]+)['"]\)(.*)$/
-            );
-            if (textIsMatch) {
-              const [, innerSelector, text, innerAfter] = textIsMatch;
-              let innerElements;
-              try {
-                innerElements = innerSelector
-                  ? Array.from(el.querySelectorAll(innerSelector))
-                  : Array.from(el.querySelectorAll("*"));
-              } catch (error) {
-                return false;
-              }
-
-              return innerElements.some((innerEl) => {
-                const textContent =
-                  innerEl.textContent && innerEl.textContent.trim();
-                let matchesText = textContent === text;
-
-                // Apply additional conditions after :text-is()
-                if (matchesText && innerAfter && innerAfter.trim()) {
-                  try {
-                    matchesText = innerEl.matches(innerAfter.trim());
-                  } catch {
-                    matchesText = false;
-                  }
-                }
-                return matchesText;
-              });
-            }
-          } else if (hasContent.includes(":visible")) {
-            // Handle :visible inside :has()
-            const visibleMatch = hasContent.match(/^([^:]*):visible(.*)$/);
-            if (visibleMatch) {
-              const [, innerSelector, innerAfter] = visibleMatch;
-              let innerElements;
-              try {
-                innerElements = innerSelector
-                  ? Array.from(el.querySelectorAll(innerSelector))
-                  : Array.from(el.querySelectorAll("*"));
-              } catch (error) {
-                return false;
-              }
-
-              return innerElements.some((innerEl) => {
-                const style = window.getComputedStyle(innerEl);
-                let isVisible =
-                  style.display !== "none" &&
-                  style.visibility !== "hidden" &&
-                  style.opacity !== "0" &&
-                  innerEl.offsetHeight > 0 &&
-                  innerEl.offsetWidth > 0;
-
-                // Apply additional conditions after :visible
-                if (isVisible && innerAfter && innerAfter.trim()) {
-                  try {
-                    isVisible = innerEl.matches(innerAfter.trim());
-                  } catch {
-                    isVisible = false;
-                  }
-                }
-                return isVisible;
-              });
-            }
-          } else {
-            // Handle regular CSS selector inside :has() - including combinators
-            try {
-              return el.querySelector(hasContent) !== null;
-            } catch (error) {
-              return false;
-            }
-          }
-          return false;
-        });
-
-        // Apply additional selectors after :has()
-        if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
-        }
-      }
-      // Handle :text-is() pseudo-selector for exact text matching
-      else if (locator.includes(":text-is(")) {
-        const textIsMatch = locator.match(
-          /^([^:]*):text-is\(['"']([^'"']+)['"']\)(.*)$/
-        );
-        if (textIsMatch) {
-          const [, baseSelector, text, afterSelector] = textIsMatch;
-          let baseElements;
-          try {
-            baseElements = baseSelector
-              ? Array.from(document.querySelectorAll(baseSelector))
-              : Array.from(document.querySelectorAll("*"));
-          } catch (error) {
-            throw new Error(`Invalid base selector: ${baseSelector}`);
-          }
-
-          elements = baseElements.filter((el) => {
-            const textContent = el.textContent && el.textContent.trim();
-            return textContent === text;
-          });
-
-          // Apply additional selectors after :text-is()
-          if (afterSelector && afterSelector.trim()) {
-            elements = elements.filter((el) => {
-              try {
-                return el.matches(afterSelector.trim());
-              } catch {
-                return false;
-              }
-            });
-          }
-        }
-      }
-      // Handle :has-text() pseudo-selector
-      else if (locator.includes(":has-text(")) {
-        const hasTextMatch = locator.match(
-          /^([^:]*):has-text\(['"]([^'"]+)['"]\)(.*)$/
-        );
-        if (hasTextMatch) {
-          const [, baseSelector, text, afterSelector] = hasTextMatch;
-          let baseElements;
-          try {
-            baseElements = baseSelector
-              ? Array.from(document.querySelectorAll(baseSelector))
-              : Array.from(document.querySelectorAll("*"));
-          } catch (error) {
-            throw new Error(`Invalid base selector: ${baseSelector}`);
-          }
-
-          elements = baseElements.filter((el) => {
-            const textContent = el.textContent && el.textContent.trim();
-            return textContent && textContent.includes(text);
-          });
-
-          // Apply additional selectors after :has-text()
-          if (afterSelector && afterSelector.trim()) {
-            elements = elements.filter((el) => {
-              try {
-                return el.matches(afterSelector.trim());
-              } catch {
-                return false;
-              }
-            });
-          }
-        }
-      }
-      // Handle :visible pseudo-selector
-      else if (locator.includes(":visible")) {
-        const visibleMatch = locator.match(/^([^:]*):visible(.*)$/);
-        if (visibleMatch) {
-          const [, baseSelector, afterSelector] = visibleMatch;
-          let baseElements;
-          try {
-            baseElements = baseSelector
-              ? Array.from(document.querySelectorAll(baseSelector))
-              : Array.from(document.querySelectorAll("*"));
-          } catch (error) {
-            throw new Error(`Invalid base selector: ${baseSelector}`);
-          }
-
-          elements = baseElements.filter((el) => {
-            const style = window.getComputedStyle(el);
-            return (
-              style.display !== "none" &&
-              style.visibility !== "hidden" &&
-              style.opacity !== "0" &&
-              el.offsetHeight > 0 &&
-              el.offsetWidth > 0
-            );
-          });
-
-          // Apply additional selectors after :visible
-          if (afterSelector && afterSelector.trim()) {
-            elements = elements.filter((el) => {
-              try {
-                return el.matches(afterSelector.trim());
-              } catch {
-                return false;
-              }
-            });
-          }
-        }
-      }
-      // Handle :contains() pseudo-selector (alias for :has-text())
-      else if (locator.includes(":contains(")) {
-        const containsMatch = locator.match(
-          /^([^:]*):contains\(['"]([^'"]+)['"]\)(.*)$/
-        );
-        if (containsMatch) {
-          const [, baseSelector, text, afterSelector] = containsMatch;
-          let baseElements;
-          try {
-            baseElements = baseSelector
-              ? Array.from(document.querySelectorAll(baseSelector))
-              : Array.from(document.querySelectorAll("*"));
-          } catch (error) {
-            throw new Error(`Invalid base selector: ${baseSelector}`);
-          }
-
-          elements = baseElements.filter((el) => {
-            const textContent = el.textContent && el.textContent.trim();
-            return textContent && textContent.includes(text);
-          });
-
-          // Apply additional selectors after :contains()
-          if (afterSelector && afterSelector.trim()) {
-            elements = elements.filter((el) => {
-              try {
-                return el.matches(afterSelector.trim());
-              } catch {
-                return false;
-              }
-            });
-          }
-        }
-      }
-      // Handle regular CSS selectors with combinators or fallback
-      else {
-        // Try to parse as regular CSS first - this handles all CSS combinators
-        try {
-          elements = Array.from(document.querySelectorAll(locator));
-        } catch (error) {
-          throw new Error(
-            `Invalid CSS selector: ${locator}. Error: ${error.message}`
-          );
-        }
-      }
-
-      return elements;
     }
 
     return {
