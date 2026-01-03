@@ -44,16 +44,21 @@ function clearOverlays() {
   if (styles) styles.remove();
 }
 
-// Main inspector exposed to the page
-// requestId (optional) is used to avoid creating overlays for stale requests
 window.__locatorInspect = function (locator, type, requestId) {
   try {
-    // Clear overlays from previous explicit clear request
-    clearOverlays();
-
-    // Determine whether to create overlays for this run
     const lastId =
       window.__locatorInspect && window.__locatorInspect.__lastRequestId;
+    if (requestId !== undefined && lastId !== requestId) {
+      return { count: 0, details: "", error: null };
+    }
+
+    if (!locator || !locator.trim()) {
+      clearOverlays();
+      return { count: 0, details: "", error: null };
+    }
+
+    clearOverlays();
+
     const createOverlays = requestId === undefined || lastId === requestId;
 
     let elements = [];
@@ -61,11 +66,15 @@ window.__locatorInspect = function (locator, type, requestId) {
 
     switch (type) {
       case "css":
-        findByCss(locator).forEach((el) => elements.push(el));
+        const css = findByCss(locator);
+        if (css && css.error) return { error: css.error };
+        css.forEach((el) => elements.push(el));
         break;
 
       case "xpath":
-        findByXPath(locator).forEach((el) => elements.push(el));
+        const xpath = findByXPath(locator);
+        if (xpath && xpath.error) return { error: xpath.error };
+        xpath.forEach((el) => elements.push(el));
         break;
 
       case "playwright":
@@ -75,21 +84,17 @@ window.__locatorInspect = function (locator, type, requestId) {
         break;
 
       case "smart":
-        try {
-          findBySmartLocator(locator).forEach((el) => elements.push(el));
-        } catch (error) {
-          return { error: `Smart locator error: ${error.message}` };
-        }
+        const smart = findBySmartLocator(locator);
+        if (smart && smart.error) return { error: smart.error };
+        smart.forEach((el) => elements.push(el));
         break;
 
       default:
         return { error: "Unknown locator type" };
     }
 
-    // Remove duplicates
     elements = [...new Set(elements)];
 
-    // If overlays should be created for this request, build them
     let overlayContainer = null;
     const highlightData = [];
 
@@ -178,12 +183,21 @@ window.__locatorInspect = function (locator, type, requestId) {
     }
 
     let scrollHandler = null;
+    let scrollTimeout = null;
     if (createOverlays && overlayContainer) {
       updateHighlightPositions();
-      scrollHandler = () => updateHighlightPositions();
+      scrollHandler = () => {
+        if (scrollTimeout) return;
+        scrollTimeout = requestAnimationFrame(() => {
+          updateHighlightPositions();
+          scrollTimeout = null;
+        });
+      };
       window.addEventListener("scroll", scrollHandler, { passive: true });
-      overlayContainer._cleanup = () =>
+      overlayContainer._cleanup = () => {
         window.removeEventListener("scroll", scrollHandler);
+        if (scrollTimeout) cancelAnimationFrame(scrollTimeout);
+      };
 
       if (!document.getElementById("locator-inspector-styles")) {
         const style = document.createElement("style");
@@ -192,7 +206,6 @@ window.__locatorInspect = function (locator, type, requestId) {
         document.head.appendChild(style);
       }
 
-      // Remove overlays after a short timeout
       setTimeout(() => {
         const container = document.getElementById(
           "locator-inspector-overlay-container"
@@ -206,7 +219,6 @@ window.__locatorInspect = function (locator, type, requestId) {
       }, 5000);
     }
 
-    // Prepare a small details summary for the popup
     if (elements.length > 0) {
       details = elements
         .slice(0, 5)

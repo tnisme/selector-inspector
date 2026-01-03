@@ -1,6 +1,3 @@
-// This content script injects the locator engines into the page's main world
-// so they can be accessed from the page context
-
 console.log("[Content Script] Loaded - about to inject engines");
 
 function injectScript(src) {
@@ -15,19 +12,49 @@ function injectScript(src) {
       script.remove();
       reject(new Error(`Failed to inject ${src}`));
     };
-    (document.head || document.documentElement).appendChild(script);
+
+    const inject = () => {
+      const target = document.head || document.documentElement;
+      if (target) {
+        target.appendChild(script);
+      } else {
+        setTimeout(() => {
+          const retryTarget = document.head || document.documentElement;
+          if (retryTarget) {
+            retryTarget.appendChild(script);
+          } else {
+            reject(new Error(`Cannot find injection target for ${src}`));
+          }
+        }, 100);
+      }
+    };
+
+    if (document.documentElement || document.head) {
+      inject();
+    } else {
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", inject, { once: true });
+        setTimeout(() => {
+          if (document.documentElement || document.head) {
+            inject();
+          } else {
+            reject(new Error(`DOM not ready for ${src}`));
+          }
+        }, 1000);
+      } else {
+        inject();
+      }
+    }
   });
 }
 
 async function injectEngines() {
   try {
-    // Inject engines first
     await injectScript("engine/cssEngine.js");
     await injectScript("engine/xpathEngine.js");
     await injectScript("engine/playwrightEngine.js");
     await injectScript("engine/smartLocatorEngine.js");
 
-    // Then inject injector which depends on engines
     await injectScript("engine/injector.js");
 
     console.log(
@@ -38,5 +65,4 @@ async function injectEngines() {
   }
 }
 
-// Start injection as soon as possible
 injectEngines();

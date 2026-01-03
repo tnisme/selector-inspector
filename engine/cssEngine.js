@@ -1,6 +1,7 @@
-// Expose engine functions on a shared namespace so they can be injected
 window.__locatorEngines = window.__locatorEngines || {};
 window.__locatorEngines.findByCss = function findByCss(selector) {
+  if (!selector || selector.trim().length === 0) return [];
+
   try {
     const elements = Array.from(document.querySelectorAll(selector));
     return elements;
