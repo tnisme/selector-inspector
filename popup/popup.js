@@ -23,6 +23,11 @@ import {
 
 let typeSelect, locatorInput;
 
+// Notify background that panel is opening
+chrome.runtime.sendMessage({ type: "panel-opened" }).catch(() => {
+  // Ignore errors if background isn't ready
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   initPopupState();
 
@@ -34,4 +39,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
   initPopupUI();
   initPopupInspection();
+});
+
+// Notify background when panel is closing
+window.addEventListener("beforeunload", () => {
+  chrome.runtime.sendMessage({ type: "panel-closed" }).catch(() => {
+    // Ignore errors
+  });
+});
+
+// Also handle visibility change (when user switches tabs/windows)
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    chrome.runtime.sendMessage({ type: "panel-closed" }).catch(() => {
+      // Ignore errors
+    });
+  } else {
+    chrome.runtime.sendMessage({ type: "panel-opened" }).catch(() => {
+      // Ignore errors
+    });
+  }
 });

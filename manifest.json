@@ -12,24 +12,5 @@
   },
   "background": {
     "service_worker": "background.js"
-  },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "run_at": "document_start"
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "engine/cssEngine.js",
-        "engine/xpathEngine.js",
-        "engine/playwrightEngine.js",
-        "engine/smartLocatorEngine.js",
-        "engine/injector.js"
-      ],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  }
 }
