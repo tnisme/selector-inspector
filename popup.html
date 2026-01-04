@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Arial, sans-serif;
+        background: #f8f9fa;
+        overflow-x: hidden;
+      }
+
+      .container {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        padding: 16px;
+        gap: 16px;
+      }
+
+      .header {
+        background: white;
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border-left: 4px solid #007acc;
+      }
+
+      h2 {
+        margin: 0;
+        color: #333;
+        font-size: 18px;
+        font-weight: 600;
+      }
+
+      .content {
+        flex: 1;
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        min-height: 0;
+      }
+
+      .form-section {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      label {
+        font-weight: 500;
+        color: #555;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      select,
+      textarea {
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: all 0.2s;
+        background: #fff;
+      }
+
+      select:focus,
+      textarea:focus {
+        outline: none;
+        border-color: #007acc;
+        box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.1);
+      }
+
+      select:hover,
+      textarea:hover {
+        border-color: #007acc;
+      }
+
+      textarea {
+        min-height: 120px;
+        max-height: 200px;
+        resize: vertical;
+        font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .button-container {
+        margin-top: auto;
+        padding-top: 16px;
+        border-top: 1px solid #eee;
+      }
+
+      button {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, #007acc 0%, #005a9e 100%);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+        overflow: hidden;
+      }
+
+      button:hover:not(:disabled) {
+        background: linear-gradient(135deg, #005a9e 0%, #004380 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 122, 204, 0.3);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .result-container {
+        margin-top: 16px;
+      }
+
+      #result {
+        padding: 16px;
+        border-radius: 6px;
+        font-size: 13px;
+        white-space: pre-wrap;
+        line-height: 1.5;
+        display: none;
+        border: 1px solid transparent;
+        font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+      }
+
+      .result-success {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border-color: #b8dabd;
+        color: #155724;
+      }
+
+      .result-error {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        border-color: #f1b0b7;
+        color: #721c24;
+      }
+
+      .result-info {
+        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+        border-color: #abdde5;
+        color: #0c5460;
+      }
+
+      .loading {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #007acc;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-right: 8px;
+        vertical-align: middle;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .badge {
+        display: inline-block;
+        background: #007acc;
+        color: white;
+        font-size: 11px;
+        font-weight: 500;
+        padding: 2px 6px;
+        border-radius: 10px;
+        margin-left: 8px;
+      }
+
+      /* Scrollbar styling */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h2>Locator Inspector <span class="badge">DevTools</span></h2>
+      </div>
+
+      <div class="content">
+        <div class="form-section">
+          <div class="form-group">
+            <label for="type">Locator Type</label>
+            <select id="type">
+              <option value="css">CSS Selector</option>
+              <option value="xpath">XPath</option>
+              <option value="playwright">Playwright</option>
+              <option value="smart">Smart Locator</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="locator">Locator Expression</label>
+            <textarea
+              id="locator"
+              placeholder="Enter your locator here..."
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="button-container">
+          <button id="inspectBtn">Refresh Inspection</button>
+
+          <div class="result-container">
+            <div id="result"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="popup/popup.js"></script>
+  </body>
+</html>
