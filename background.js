@@ -48,29 +48,61 @@ async function injectContentScript(tabId) {
       .catch(() => null);
 
     if (results?.[0]?.result !== "function") {
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        files: [
-          "engine/cssEngine.js",
-          "engine/xpathEngine.js",
-          "engine/playwrightEngine.js",
-          "engine/smartLocatorEngine.js",
-          "engine/injector.js",
-        ],
-        world: "MAIN",
-      });
-
-      await chrome.scripting
-        .executeScript({
+      try {
+        await chrome.scripting.executeScript({
           target: { tabId },
-          func: () => {
-            if (window.__locatorInspect) {
-              window.__locatorInspect.__active = true;
-            }
-          },
+          files: [
+            "engine/cssEngine.js",
+            "engine/xpathEngine.js",
+            "engine/playwrightEngine.js",
+            "engine/smartLocatorEngine.js",
+            "engine/injector.js",
+          ],
           world: "MAIN",
-        })
-        .catch(() => {});
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        const verifyResults = await chrome.scripting
+          .executeScript({
+            target: { tabId },
+            func: () => {
+              return {
+                hasInspect: typeof window.__locatorInspect === "function",
+                hasEngines: typeof window.__locatorEngines === "object",
+                engineKeys: window.__locatorEngines
+                  ? Object.keys(window.__locatorEngines)
+                  : [],
+              };
+            },
+            world: "MAIN",
+          })
+          .catch(() => null);
+
+        if (verifyResults?.[0]?.result) {
+          const verify = verifyResults[0].result;
+          if (!verify.hasInspect) {
+            console.error(
+              "Failed to inject __locatorInspect. Engines available:",
+              verify.engineKeys
+            );
+          }
+        }
+
+        await chrome.scripting
+          .executeScript({
+            target: { tabId },
+            func: () => {
+              if (window.__locatorInspect) {
+                window.__locatorInspect.__active = true;
+              }
+            },
+            world: "MAIN",
+          })
+          .catch(() => {});
+      } catch (error) {
+        console.error("Error injecting content scripts:", error);
+      }
     } else {
       await chrome.scripting
         .executeScript({

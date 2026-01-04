@@ -1,22 +1,119 @@
 window.__locatorEngines = window.__locatorEngines || {};
 window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
-  locator
+  locator,
+  context
 ) {
   if (!locator || !locator.trim()) return [];
   if (locator.match(/[\s>+~]$/)) return [];
 
+  if (locator.includes(">>")) {
+    let lastOperatorIndex = -1;
+    let depth = 0;
+    let inQuotes = false;
+    let quoteChar = null;
+    
+    for (let i = 0; i < locator.length - 1; i++) {
+      const char = locator[i];
+      const nextChar = locator[i + 1];
+      const prevChar = locator[i - 1];
+      
+      if ((char === '"' || char === "'") && prevChar !== "\\") {
+        if (!inQuotes) {
+          inQuotes = true;
+          quoteChar = char;
+        } else if (char === quoteChar) {
+          inQuotes = false;
+          quoteChar = null;
+        }
+      }
+      
+      if (!inQuotes) {
+        if (char === "(") depth++;
+        else if (char === ")") depth--;
+      }
+      
+      if (!inQuotes && depth === 0 && char === ">" && nextChar === ">") {
+        lastOperatorIndex = i;
+      }
+    }
+    
+    if (lastOperatorIndex >= 0) {
+      let beforeOperator = locator.substring(0, lastOperatorIndex).trim();
+      let afterOperator = locator.substring(lastOperatorIndex + 2).trim();
+      
+      beforeOperator = beforeOperator.replace(/\s+$/, "");
+      afterOperator = afterOperator.replace(/^\s+/, "");
+      
+      if (beforeOperator && afterOperator) {
+        const baseElements = window.__locatorEngines.findBySmartLocator(
+          beforeOperator,
+          context
+        );
+        
+        if (baseElements && baseElements.error) {
+          return baseElements;
+        }
+        
+        if (!Array.isArray(baseElements) || baseElements.length === 0) {
+          return [];
+        }
+        
+        const finalElements = [];
+        baseElements.forEach((baseEl) => {
+          try {
+            const matched = window.__locatorEngines.findBySmartLocator(
+              afterOperator,
+              baseEl
+            );
+            if (matched && !matched.error && Array.isArray(matched)) {
+              finalElements.push(...matched);
+            }
+          } catch (err) {
+            // Skip errors for individual elements
+          }
+        });
+        
+        return [...new Set(finalElements)];
+      }
+    }
+  }
+
+  let searchRoot = document;
+  if (context) {
+    if (context.nodeType === Node.DOCUMENT_NODE || context.nodeType === Node.ELEMENT_NODE) {
+      searchRoot = context;
+    } else if (context.querySelectorAll) {
+      searchRoot = context;
+    }
+  }
+
   try {
     let elements = [];
 
-    if (
-      !locator.includes(":has(") &&
-      !locator.includes(":text-is(") &&
-      !locator.includes(":has-text(") &&
-      !locator.includes(":visible") &&
-      !locator.includes(":contains(")
-    ) {
+    const hasCustomPseudo =
+      locator.includes(":has(") ||
+      locator.includes(":text-is(") ||
+      locator.includes(":has-text(") ||
+      locator.includes(":visible") ||
+      locator.includes(":contains(") ||
+      locator.includes(":nth-match(") ||
+      locator.includes(":active") ||
+      locator.includes(":focus") ||
+      locator.includes(":checked") ||
+      locator.includes(":disabled") ||
+      locator.includes(":enabled") ||
+      locator.includes(":first-child") ||
+      locator.includes(":last-child") ||
+      locator.includes(":only-child") ||
+      locator.includes(":nth-child(") ||
+      locator.includes(":nth-last-child(") ||
+      locator.includes(":not(") ||
+      locator.includes(":is(") ||
+      locator.includes(":where(");
+
+    if (!hasCustomPseudo) {
       try {
-        return Array.from(document.querySelectorAll(locator));
+        return Array.from(searchRoot.querySelectorAll(locator));
       } catch (error) {
         throw new Error(
           `Invalid CSS selector: ${locator}. Error: ${error.message}`
@@ -51,113 +148,29 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       let baseElements;
       try {
         baseElements = baseSelector
-          ? Array.from(document.querySelectorAll(baseSelector))
-          : Array.from(document.querySelectorAll("*"));
+          ? Array.from(searchRoot.querySelectorAll(baseSelector))
+          : Array.from(searchRoot.querySelectorAll("*"));
       } catch (error) {
         throw new Error(`Invalid base selector: ${baseSelector}`);
       }
 
       elements = baseElements.filter((el) => {
-        if (hasContent.includes(":has-text(")) {
-          const hasTextMatch = hasContent.match(
-            /^([^:]*):has-text\(['"]([^'"]+)['"]\)(.*)$/
+        try {
+          const matched = window.__locatorEngines.findBySmartLocator(
+            hasContent,
+            el
           );
-          if (hasTextMatch) {
-            const [, innerSelector, text, innerAfter] = hasTextMatch;
-            let innerElements;
-            try {
-              innerElements = innerSelector
-                ? Array.from(el.querySelectorAll(innerSelector))
-                : Array.from(el.querySelectorAll("*"));
-            } catch (error) {
-              return false;
-            }
-
-            return innerElements.some((innerEl) => {
-              const textContent =
-                innerEl.textContent && innerEl.textContent.trim();
-              let matchesText = textContent && textContent.includes(text);
-
-              if (matchesText && innerAfter && innerAfter.trim()) {
-                try {
-                  matchesText = innerEl.matches(innerAfter.trim());
-                } catch {
-                  matchesText = false;
-                }
-              }
-              return matchesText;
-            });
+          if (matched && matched.error) {
+            return false;
           }
-        } else if (hasContent.includes(":text-is(")) {
-          const textIsMatch = hasContent.match(
-            /^([^:]*):text-is\(['"]([^'"]+)['"]\)(.*)$/
-          );
-          if (textIsMatch) {
-            const [, innerSelector, text, innerAfter] = textIsMatch;
-            let innerElements;
-            try {
-              innerElements = innerSelector
-                ? Array.from(el.querySelectorAll(innerSelector))
-                : Array.from(el.querySelectorAll("*"));
-            } catch (error) {
-              return false;
-            }
-
-            return innerElements.some((innerEl) => {
-              const textContent =
-                innerEl.textContent && innerEl.textContent.trim();
-              let matchesText = textContent === text;
-
-              if (matchesText && innerAfter && innerAfter.trim()) {
-                try {
-                  matchesText = innerEl.matches(innerAfter.trim());
-                } catch {
-                  matchesText = false;
-                }
-              }
-              return matchesText;
-            });
-          }
-        } else if (hasContent.includes(":visible")) {
-          const visibleMatch = hasContent.match(/^([^:]*):visible(.*)$/);
-          if (visibleMatch) {
-            const [, innerSelector, innerAfter] = visibleMatch;
-            let innerElements;
-            try {
-              innerElements = innerSelector
-                ? Array.from(el.querySelectorAll(innerSelector))
-                : Array.from(el.querySelectorAll("*"));
-            } catch (error) {
-              return false;
-            }
-
-            return innerElements.some((innerEl) => {
-              const style = window.getComputedStyle(innerEl);
-              let isVisible =
-                style.display !== "none" &&
-                style.visibility !== "hidden" &&
-                style.opacity !== "0" &&
-                innerEl.offsetHeight > 0 &&
-                innerEl.offsetWidth > 0;
-
-              if (isVisible && innerAfter && innerAfter.trim()) {
-                try {
-                  isVisible = innerEl.matches(innerAfter.trim());
-                } catch {
-                  isVisible = false;
-                }
-              }
-              return isVisible;
-            });
-          }
-        } else {
+          return matched && matched.length > 0;
+        } catch (error) {
           try {
             return el.querySelector(hasContent) !== null;
-          } catch (error) {
+          } catch (err) {
             return false;
           }
         }
-        return false;
       });
 
       if (afterSelector && afterSelector.trim()) {
@@ -170,16 +183,18 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
       }
     } else if (locator.includes(":text-is(")) {
-      const textIsMatch = locator.match(
-        /^([^:]*):text-is\(['"']([^'"']+)['"']\)(.*)$/
-      );
+      const textIsMatch = locator.match(/:text-is\((['"])([^'"]+)\1\)/);
       if (textIsMatch) {
-        const [, baseSelector, text, afterSelector] = textIsMatch;
+        const textIsIndex = locator.indexOf(":text-is(");
+        const beforeTextIs = locator.substring(0, textIsIndex);
+        const text = textIsMatch[2];
+        const textIsEnd = textIsIndex + textIsMatch[0].length;
+        const afterTextIs = locator.substring(textIsEnd);
+        
+        const baseSelector = beforeTextIs || "*";
         let baseElements;
         try {
-          baseElements = baseSelector
-            ? Array.from(document.querySelectorAll(baseSelector))
-            : Array.from(document.querySelectorAll("*"));
+          baseElements = Array.from(searchRoot.querySelectorAll(baseSelector));
         } catch (error) {
           throw new Error(`Invalid base selector: ${baseSelector}`);
         }
@@ -189,27 +204,42 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           return textContent === text;
         });
 
-        if (afterSelector && afterSelector.trim()) {
+        if (afterTextIs && afterTextIs.trim()) {
           elements = elements.filter((el) => {
             try {
-              return el.matches(afterSelector.trim());
+              const parent = el.parentElement || searchRoot;
+              const matched = window.__locatorEngines.findBySmartLocator(
+                afterTextIs.trim(),
+                parent
+              );
+              if (matched && !matched.error) {
+                return matched.includes(el);
+              }
+              return el.matches(afterTextIs.trim());
             } catch {
-              return false;
+              try {
+                return el.matches(afterTextIs.trim());
+              } catch {
+                return false;
+              }
             }
           });
         }
       }
     } else if (locator.includes(":has-text(")) {
-      const hasTextMatch = locator.match(
-        /^([^:]*):has-text\(['"]([^'"]+)['"]\)(.*)$/
-      );
+      const hasTextMatch = locator.match(/:has-text\((['"])([^'"]+)\1\)/);
       if (hasTextMatch) {
-        const [, baseSelector, text, afterSelector] = hasTextMatch;
+        const hasTextIndex = locator.indexOf(":has-text(");
+        const beforeHasText = locator.substring(0, hasTextIndex);
+        const text = hasTextMatch[2];
+        const hasTextEnd = hasTextIndex + hasTextMatch[0].length;
+        const afterSelector = locator.substring(hasTextEnd);
+        const baseSelector = beforeHasText || "*";
         let baseElements;
         try {
           baseElements = baseSelector
-            ? Array.from(document.querySelectorAll(baseSelector))
-            : Array.from(document.querySelectorAll("*"));
+            ? Array.from(searchRoot.querySelectorAll(baseSelector))
+            : Array.from(searchRoot.querySelectorAll("*"));
         } catch (error) {
           throw new Error(`Invalid base selector: ${baseSelector}`);
         }
@@ -236,8 +266,8 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         let baseElements;
         try {
           baseElements = baseSelector
-            ? Array.from(document.querySelectorAll(baseSelector))
-            : Array.from(document.querySelectorAll("*"));
+            ? Array.from(searchRoot.querySelectorAll(baseSelector))
+            : Array.from(searchRoot.querySelectorAll("*"));
         } catch (error) {
           throw new Error(`Invalid base selector: ${baseSelector}`);
         }
@@ -264,16 +294,19 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         }
       }
     } else if (locator.includes(":contains(")) {
-      const containsMatch = locator.match(
-        /^([^:]*):contains\(['"]([^'"]+)['"]\)(.*)$/
-      );
+      const containsMatch = locator.match(/:contains\((['"])([^'"]+)\1\)/);
       if (containsMatch) {
-        const [, baseSelector, text, afterSelector] = containsMatch;
+        const containsIndex = locator.indexOf(":contains(");
+        const beforeContains = locator.substring(0, containsIndex);
+        const text = containsMatch[2];
+        const containsEnd = containsIndex + containsMatch[0].length;
+        const afterSelector = locator.substring(containsEnd);
+        const baseSelector = beforeContains || "*";
         let baseElements;
         try {
           baseElements = baseSelector
-            ? Array.from(document.querySelectorAll(baseSelector))
-            : Array.from(document.querySelectorAll("*"));
+            ? Array.from(searchRoot.querySelectorAll(baseSelector))
+            : Array.from(searchRoot.querySelectorAll("*"));
         } catch (error) {
           throw new Error(`Invalid base selector: ${baseSelector}`);
         }
@@ -293,9 +326,468 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           });
         }
       }
+    } else if (locator.includes(":nth-match(")) {
+      const nthMatchPattern = /:nth-match\(([^,]+),\s*(\d+)\)/;
+      const match = locator.match(nthMatchPattern);
+      if (match) {
+        const beforeNthMatch = locator.substring(0, locator.indexOf(":nth-match"));
+        const selector = match[1].trim();
+        const n = parseInt(match[2], 10);
+        const afterNthMatch = locator.substring(locator.indexOf(":nth-match") + match[0].length);
+
+        let baseElements;
+        try {
+          const fullSelector = beforeNthMatch + selector + afterNthMatch;
+          baseElements = beforeNthMatch
+            ? Array.from(searchRoot.querySelectorAll(beforeNthMatch + selector + afterNthMatch))
+            : Array.from(searchRoot.querySelectorAll(selector + afterNthMatch));
+        } catch (error) {
+          throw new Error(`Invalid selector in :nth-match: ${error.message}`);
+        }
+
+        const parentMap = new Map();
+        baseElements.forEach((el) => {
+          const parent = el.parentElement;
+          if (parent) {
+            if (!parentMap.has(parent)) {
+              parentMap.set(parent, []);
+            }
+            parentMap.get(parent).push(el);
+          }
+        });
+
+        elements = [];
+        parentMap.forEach((siblings) => {
+          if (n > 0 && n <= siblings.length) {
+            elements.push(siblings[n - 1]);
+          }
+        });
+      }
+    } else if (locator.includes(":first-child")) {
+      const parts = locator.split(":first-child");
+      const baseSelector = parts[0] || "*";
+      const afterSelector = parts.slice(1).join(":first-child");
+
+      try {
+        const allElements = baseSelector
+          ? Array.from(document.querySelectorAll(baseSelector))
+          : Array.from(document.querySelectorAll("*"));
+
+        elements = allElements.filter((el) => {
+          const parent = el.parentElement;
+          if (!parent) return false;
+          const siblings = Array.from(parent.children);
+          return siblings.indexOf(el) === 0;
+        });
+
+        if (afterSelector && afterSelector.trim()) {
+          elements = elements.filter((el) => {
+            try {
+              return el.matches(afterSelector.trim());
+            } catch {
+              return false;
+            }
+          });
+        }
+      } catch (error) {
+        throw new Error(`Invalid selector: ${error.message}`);
+      }
+    } else if (locator.includes(":last-child")) {
+      const parts = locator.split(":last-child");
+      const baseSelector = parts[0] || "*";
+      const afterSelector = parts.slice(1).join(":last-child");
+
+      try {
+        const allElements = baseSelector
+          ? Array.from(document.querySelectorAll(baseSelector))
+          : Array.from(document.querySelectorAll("*"));
+
+        elements = allElements.filter((el) => {
+          const parent = el.parentElement;
+          if (!parent) return false;
+          const siblings = Array.from(parent.children);
+          return siblings.indexOf(el) === siblings.length - 1;
+        });
+
+        if (afterSelector && afterSelector.trim()) {
+          elements = elements.filter((el) => {
+            try {
+              return el.matches(afterSelector.trim());
+            } catch {
+              return false;
+            }
+          });
+        }
+      } catch (error) {
+        throw new Error(`Invalid selector: ${error.message}`);
+      }
+    } else if (locator.includes(":only-child")) {
+      const parts = locator.split(":only-child");
+      const baseSelector = parts[0] || "*";
+      const afterSelector = parts.slice(1).join(":only-child");
+
+      try {
+        const allElements = baseSelector
+          ? Array.from(document.querySelectorAll(baseSelector))
+          : Array.from(document.querySelectorAll("*"));
+
+        elements = allElements.filter((el) => {
+          const parent = el.parentElement;
+          if (!parent) return false;
+          return parent.children.length === 1;
+        });
+
+        if (afterSelector && afterSelector.trim()) {
+          elements = elements.filter((el) => {
+            try {
+              return el.matches(afterSelector.trim());
+            } catch {
+              return false;
+            }
+          });
+        }
+      } catch (error) {
+        throw new Error(`Invalid selector: ${error.message}`);
+      }
+    } else if (locator.includes(":nth-child(")) {
+      const nthChildMatch = locator.match(/:nth-child\(([^)]+)\)/);
+      if (nthChildMatch) {
+        const nthValue = nthChildMatch[1].trim();
+        const parts = locator.split(/:nth-child\([^)]+\)/);
+        const baseSelector = parts[0] || "*";
+        const afterSelector = parts[1] || "";
+
+        try {
+          const allElements = baseSelector
+            ? Array.from(searchRoot.querySelectorAll(baseSelector))
+            : Array.from(searchRoot.querySelectorAll("*"));
+
+          elements = allElements.filter((el) => {
+            const parent = el.parentElement;
+            if (!parent) return false;
+            const siblings = Array.from(parent.children);
+            const index = siblings.indexOf(el) + 1;
+
+            if (nthValue === "n" || nthValue === "1n") {
+              return true;
+            } else if (/^\d+$/.test(nthValue)) {
+              return index === parseInt(nthValue, 10);
+            } else if (/^(\d+)n$/.test(nthValue)) {
+              const multiplier = parseInt(nthValue.match(/^(\d+)n$/)[1], 10);
+              return index % multiplier === 0;
+            } else if (/^(\d+)n\s*\+\s*(\d+)$/.test(nthValue)) {
+              const match = nthValue.match(/^(\d+)n\s*\+\s*(\d+)$/);
+              const multiplier = parseInt(match[1], 10);
+              const offset = parseInt(match[2], 10);
+              return (index - offset) % multiplier === 0 && index >= offset;
+            } else if (/^(\d+)n\s*-\s*(\d+)$/.test(nthValue)) {
+              const match = nthValue.match(/^(\d+)n\s*-\s*(\d+)$/);
+              const multiplier = parseInt(match[1], 10);
+              const offset = parseInt(match[2], 10);
+              return (index + offset) % multiplier === 0 && index >= offset;
+            }
+            return false;
+          });
+
+          if (afterSelector && afterSelector.trim()) {
+            elements = elements.filter((el) => {
+              try {
+                return el.matches(afterSelector.trim());
+              } catch {
+                return false;
+              }
+            });
+          }
+        } catch (error) {
+          throw new Error(`Invalid :nth-child selector: ${error.message}`);
+        }
+      }
+    } else if (locator.includes(":nth-last-child(")) {
+      const nthLastChildMatch = locator.match(/:nth-last-child\(([^)]+)\)/);
+      if (nthLastChildMatch) {
+        const nthValue = nthLastChildMatch[1].trim();
+        const parts = locator.split(/:nth-last-child\([^)]+\)/);
+        const baseSelector = parts[0] || "*";
+        const afterSelector = parts[1] || "";
+
+        try {
+          const allElements = baseSelector
+            ? Array.from(searchRoot.querySelectorAll(baseSelector))
+            : Array.from(searchRoot.querySelectorAll("*"));
+
+          elements = allElements.filter((el) => {
+            const parent = el.parentElement;
+            if (!parent) return false;
+            const siblings = Array.from(parent.children);
+            const index = siblings.length - siblings.indexOf(el);
+
+            if (nthValue === "n" || nthValue === "1n") {
+              return true;
+            } else if (/^\d+$/.test(nthValue)) {
+              return index === parseInt(nthValue, 10);
+            } else if (/^(\d+)n$/.test(nthValue)) {
+              const multiplier = parseInt(nthValue.match(/^(\d+)n$/)[1], 10);
+              return index % multiplier === 0;
+            } else if (/^(\d+)n\s*\+\s*(\d+)$/.test(nthValue)) {
+              const match = nthValue.match(/^(\d+)n\s*\+\s*(\d+)$/);
+              const multiplier = parseInt(match[1], 10);
+              const offset = parseInt(match[2], 10);
+              return (index - offset) % multiplier === 0 && index >= offset;
+            } else if (/^(\d+)n\s*-\s*(\d+)$/.test(nthValue)) {
+              const match = nthValue.match(/^(\d+)n\s*-\s*(\d+)$/);
+              const multiplier = parseInt(match[1], 10);
+              const offset = parseInt(match[2], 10);
+              return (index + offset) % multiplier === 0 && index >= offset;
+            }
+            return false;
+          });
+
+          if (afterSelector && afterSelector.trim()) {
+            elements = elements.filter((el) => {
+              try {
+                return el.matches(afterSelector.trim());
+              } catch {
+                return false;
+              }
+            });
+          }
+        } catch (error) {
+          throw new Error(`Invalid :nth-last-child selector: ${error.message}`);
+        }
+      }
+    } else if (locator.includes(":active")) {
+      const parts = locator.split(":active");
+      const baseSelector = parts[0] || "*";
+      const afterSelector = parts.slice(1).join(":active");
+
+      try {
+        const allElements = baseSelector
+          ? Array.from(document.querySelectorAll(baseSelector))
+          : Array.from(document.querySelectorAll("*"));
+
+        elements = allElements.filter((el) => {
+          return document.activeElement === el && el.matches(":active");
+        });
+
+        if (afterSelector && afterSelector.trim()) {
+          elements = elements.filter((el) => {
+            try {
+              return el.matches(afterSelector.trim());
+            } catch {
+              return false;
+            }
+          });
+        }
+      } catch (error) {
+        throw new Error(`Invalid selector: ${error.message}`);
+      }
+    } else if (locator.includes(":focus")) {
+      const parts = locator.split(":focus");
+      const baseSelector = parts[0] || "*";
+      const afterSelector = parts.slice(1).join(":focus");
+
+      try {
+        const allElements = baseSelector
+          ? Array.from(document.querySelectorAll(baseSelector))
+          : Array.from(document.querySelectorAll("*"));
+
+        elements = allElements.filter((el) => {
+          return document.activeElement === el;
+        });
+
+        if (afterSelector && afterSelector.trim()) {
+          elements = elements.filter((el) => {
+            try {
+              return el.matches(afterSelector.trim());
+            } catch {
+              return false;
+            }
+          });
+        }
+      } catch (error) {
+        throw new Error(`Invalid selector: ${error.message}`);
+      }
+    } else if (locator.includes(":checked")) {
+      const parts = locator.split(":checked");
+      const baseSelector = parts[0] || "*";
+      const afterSelector = parts.slice(1).join(":checked");
+
+      try {
+        const allElements = baseSelector
+          ? Array.from(document.querySelectorAll(baseSelector))
+          : Array.from(document.querySelectorAll("*"));
+
+        elements = allElements.filter((el) => {
+          return (
+            (el.type === "checkbox" && el.checked) ||
+            (el.type === "radio" && el.checked) ||
+            el.hasAttribute("checked")
+          );
+        });
+
+        if (afterSelector && afterSelector.trim()) {
+          elements = elements.filter((el) => {
+            try {
+              return el.matches(afterSelector.trim());
+            } catch {
+              return false;
+            }
+          });
+        }
+      } catch (error) {
+        throw new Error(`Invalid selector: ${error.message}`);
+      }
+    } else if (locator.includes(":disabled")) {
+      const parts = locator.split(":disabled");
+      const baseSelector = parts[0] || "*";
+      const afterSelector = parts.slice(1).join(":disabled");
+
+      try {
+        const allElements = baseSelector
+          ? Array.from(document.querySelectorAll(baseSelector))
+          : Array.from(document.querySelectorAll("*"));
+
+        elements = allElements.filter((el) => {
+          return el.disabled === true || el.hasAttribute("disabled");
+        });
+
+        if (afterSelector && afterSelector.trim()) {
+          elements = elements.filter((el) => {
+            try {
+              return el.matches(afterSelector.trim());
+            } catch {
+              return false;
+            }
+          });
+        }
+      } catch (error) {
+        throw new Error(`Invalid selector: ${error.message}`);
+      }
+    } else if (locator.includes(":enabled")) {
+      const parts = locator.split(":enabled");
+      const baseSelector = parts[0] || "*";
+      const afterSelector = parts.slice(1).join(":enabled");
+
+      try {
+        const allElements = baseSelector
+          ? Array.from(document.querySelectorAll(baseSelector))
+          : Array.from(document.querySelectorAll("*"));
+
+        elements = allElements.filter((el) => {
+          return el.disabled !== true && !el.hasAttribute("disabled");
+        });
+
+        if (afterSelector && afterSelector.trim()) {
+          elements = elements.filter((el) => {
+            try {
+              return el.matches(afterSelector.trim());
+            } catch {
+              return false;
+            }
+          });
+        }
+      } catch (error) {
+        throw new Error(`Invalid selector: ${error.message}`);
+      }
+    } else if (locator.includes(":not(")) {
+      const notIndex = locator.indexOf(":not(");
+      let depth = 0;
+      let notEndIndex = -1;
+      for (let i = notIndex + 5; i < locator.length; i++) {
+        if (locator[i] === "(") depth++;
+        else if (locator[i] === ")") {
+          if (depth === 0) {
+            notEndIndex = i;
+            break;
+          }
+          depth--;
+        }
+      }
+
+      if (notEndIndex === -1) {
+        throw new Error("Invalid :not() syntax - missing closing parenthesis");
+      }
+
+      const notSelector = locator.substring(notIndex + 5, notEndIndex);
+      const parts = locator.split(/:not\([^)]+\)/);
+      const beforeNot = locator.substring(0, notIndex);
+      const afterNot = locator.substring(notEndIndex + 1);
+
+      let baseSelector = beforeNot || "*";
+      const afterSelector = afterNot || "";
+
+      try {
+        try {
+          return Array.from(searchRoot.querySelectorAll(locator));
+        } catch (nativeError) {
+          // Native failed, use custom logic
+        }
+
+        const allElements = baseSelector
+          ? Array.from(searchRoot.querySelectorAll(baseSelector))
+          : Array.from(searchRoot.querySelectorAll("*"));
+
+        elements = allElements.filter((el) => {
+          try {
+            const parent = el.parentElement || searchRoot;
+            const matched = window.__locatorEngines.findBySmartLocator(
+              notSelector,
+              parent
+            );
+            if (matched && matched.error) {
+              return true;
+            }
+            const elementMatches = matched && matched.length > 0 && matched.includes(el);
+            return !elementMatches;
+          } catch (err) {
+            try {
+              return !el.matches(notSelector);
+            } catch {
+              return true;
+            }
+          }
+        });
+
+        if (afterSelector && afterSelector.trim()) {
+          elements = elements.filter((el) => {
+            try {
+              return el.matches(afterSelector.trim());
+            } catch {
+              return false;
+            }
+          });
+        }
+      } catch (err) {
+        throw new Error(`Invalid :not selector: ${err.message}`);
+      }
+    } else if (locator.includes(":is(") || locator.includes(":where(")) {
+      try {
+        return Array.from(searchRoot.querySelectorAll(locator));
+      } catch (error) {
+        const isWhereMatch = locator.match(/:(is|where)\(([^)]+)\)/);
+        if (isWhereMatch) {
+          const selectors = isWhereMatch[2].split(",").map((s) => s.trim());
+          const parts = locator.split(/:(is|where)\([^)]+\)/);
+          const baseSelector = parts[0] || "";
+          const afterSelector = parts[2] || "";
+
+          elements = [];
+          selectors.forEach((sel) => {
+            try {
+              const fullSelector = baseSelector + sel + afterSelector;
+              const matched = Array.from(searchRoot.querySelectorAll(fullSelector));
+              elements.push(...matched);
+            } catch (err) {
+              // Skip invalid selector
+            }
+          });
+
+          elements = [...new Set(elements)];
+        }
+      }
     } else {
       try {
-        elements = Array.from(document.querySelectorAll(locator));
+        elements = Array.from(searchRoot.querySelectorAll(locator));
       } catch (error) {
         throw new Error(
           `Invalid CSS selector: ${locator}. Error: ${error.message}`

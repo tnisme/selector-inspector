@@ -50,6 +50,34 @@ async function triggerInspection() {
   const tab = tabs[0];
   if (!tab) return;
 
+  let isLoaded = false;
+  for (let i = 0; i < 3; i++) {
+    const checkResult = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => typeof window.__locatorInspect,
+      world: "MAIN",
+    }).catch(() => null);
+
+    if (checkResult?.[0]?.result === "function") {
+      isLoaded = true;
+      break;
+    }
+
+    if (i === 0) {
+      chrome.runtime.sendMessage({ type: "panel-opened" }).catch(() => {});
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    } else {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+
+  if (!isLoaded) {
+    return showResult(
+      "Inspection function not loaded. Please refresh the page and try again.",
+      "error"
+    );
+  }
+
   const requestId = nextRequestId();
 
   await chrome.scripting.executeScript({
