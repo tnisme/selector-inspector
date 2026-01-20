@@ -52,11 +52,11 @@ async function injectContentScript(tabId) {
         await chrome.scripting.executeScript({
           target: { tabId },
           files: [
-            "engine/cssEngine.js",
-            "engine/xpathEngine.js",
-            "engine/playwrightEngine.js",
-            "engine/smartLocatorEngine.js",
-            "engine/injector.js",
+            "src/engine/cssEngine.js",
+            "src/engine/xpathEngine.js",
+            "src/engine/playwrightEngine.js",
+            "src/engine/smartLocatorEngine.js",
+            "src/engine/injector.js",
           ],
           world: "MAIN",
         });
