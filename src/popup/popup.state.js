@@ -2,8 +2,8 @@ let _locatorRequestSeq = 0;
 let typeSelect, locatorInput;
 
 function initPopupState() {
-  typeSelect = document.getElementById("type");
-  locatorInput = document.getElementById("locator");
+  typeSelect = document.getElementById('type');
+  locatorInput = document.getElementById('locator');
 
   loadSavedValues(typeSelect, locatorInput, updatePlaceholder);
 }
@@ -18,7 +18,7 @@ function getCurrentRequestId() {
 }
 
 function loadSavedValues(typeSelect, locatorInput, updatePlaceholder) {
-  chrome.storage.local.get(["locatorType", "locatorValue"], (result) => {
+  chrome.storage.local.get(['locatorType', 'locatorValue'], (result) => {
     if (result.locatorType) typeSelect.value = result.locatorType;
     if (result.locatorValue) locatorInput.value = result.locatorValue;
     updatePlaceholder();
@@ -35,10 +35,10 @@ function saveLocatorValue(value) {
 
 function updatePlaceholder() {
   const map = {
-    css: "Enter CSS selector (e.g., .button, #myId)",
-    xpath: "Enter XPath expression",
-    playwright: "Enter Playwright locator",
-    smart: "Enter smart locator",
+    css: 'Enter CSS selector (e.g., .button, #myId)',
+    xpath: 'Enter XPath expression',
+    playwright: 'Enter Playwright locator',
+    smart: 'Enter smart locator',
   };
   locatorInput.placeholder = map[typeSelect.value];
 }

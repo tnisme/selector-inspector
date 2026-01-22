@@ -1,3 +1,5 @@
+import { log } from '../utils/logger.js';
+
 window.__locatorEngines = window.__locatorEngines || {};
 window.__locatorEngines.findByCss = function findByCss(selector) {
   if (!selector || selector.trim().length === 0) return [];
@@ -12,7 +14,7 @@ window.__locatorEngines.findByCss = function findByCss(selector) {
   }
 };
 
-console.log(
-  "[CSS Engine] Loaded - window.__locatorEngines.findByCss available:",
+log(
+  '[CSS Engine] Loaded - window.__locatorEngines.findByCss available:',
   typeof window.__locatorEngines.findByCss
 );
