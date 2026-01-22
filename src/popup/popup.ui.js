@@ -2,33 +2,36 @@ import {
   saveLocatorType,
   updatePlaceholder,
   saveLocatorValue,
-} from "./popup.state.js";
-import { debounceInspection, triggerInspection } from "./popup.inject.js";
+} from './popup.state.js';
+import { debounceInspection, triggerInspection } from './popup.inject.js';
 
-let inspectBtn, resultDiv;
+let resultDiv;
 let typeSelect, locatorInput;
 
 function initPopupUI() {
-  inspectBtn = document.getElementById("inspectBtn");
-  resultDiv = document.getElementById("result");
+  resultDiv = document.getElementById('result');
 
-  typeSelect.addEventListener("change", () => {
+  typeSelect.addEventListener('change', () => {
     saveLocatorType(typeSelect.value);
     updatePlaceholder();
     if (locatorInput.value.trim()) triggerInspection();
   });
 
-  locatorInput.addEventListener("input", () => {
+  locatorInput.addEventListener('input', () => {
     saveLocatorValue(locatorInput.value);
     debounceInspection();
   });
 
-  inspectBtn.addEventListener("click", triggerInspection);
-
-  document.addEventListener("keydown", (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-      e.preventDefault();
-      triggerInspection();
+  locatorInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      if (e.ctrlKey || e.metaKey) {
+        // Cmd/Ctrl + Enter: allow new line (default behavior)
+        return;
+      } else {
+        // Enter alone: trigger inspection
+        e.preventDefault();
+        triggerInspection();
+      }
     }
   });
 }
@@ -36,17 +39,17 @@ function initPopupUI() {
 function showResult(message, type) {
   resultDiv.className = `result-${type}`;
   resultDiv.textContent = message;
-  resultDiv.style.display = "block";
+  resultDiv.style.display = 'block';
 }
 
 function showLoading(message) {
-  resultDiv.className = "result-info";
+  resultDiv.className = 'result-info';
   resultDiv.innerHTML = `<span class="loading"></span>${message}`;
-  resultDiv.style.display = "block";
+  resultDiv.style.display = 'block';
 }
 
 function hideResult() {
-  resultDiv.style.display = "none";
+  resultDiv.style.display = 'none';
 }
 
 export { initPopupUI, showResult, showLoading, hideResult };

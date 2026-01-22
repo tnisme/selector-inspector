@@ -1,3 +1,5 @@
+import { log } from '../utils/logger.js';
+
 window.__locatorEngines = window.__locatorEngines || {};
 window.__locatorEngines.findByXPath = function findByXPath(xpath) {
   try {
@@ -20,7 +22,7 @@ window.__locatorEngines.findByXPath = function findByXPath(xpath) {
   }
 };
 
-console.log(
-  "[XPath Engine] Loaded - window.__locatorEngines.findByXPath available:",
+log(
+  '[XPath Engine] Loaded - window.__locatorEngines.findByXPath available:',
   typeof window.__locatorEngines.findByXPath
 );

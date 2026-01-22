@@ -1,3 +1,5 @@
+import { log } from '../utils/logger.js';
+
 window.__locatorEngines = window.__locatorEngines || {};
 window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
   locator,
@@ -6,18 +8,18 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
   if (!locator || !locator.trim()) return [];
   if (locator.match(/[\s>+~]$/)) return [];
 
-  if (locator.includes(">>")) {
+  if (locator.includes('>>')) {
     let lastOperatorIndex = -1;
     let depth = 0;
     let inQuotes = false;
     let quoteChar = null;
-    
+
     for (let i = 0; i < locator.length - 1; i++) {
       const char = locator[i];
       const nextChar = locator[i + 1];
       const prevChar = locator[i - 1];
-      
-      if ((char === '"' || char === "'") && prevChar !== "\\") {
+
+      if ((char === '"' || char === "'") && prevChar !== '\\') {
         if (!inQuotes) {
           inQuotes = true;
           quoteChar = char;
@@ -26,38 +28,38 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           quoteChar = null;
         }
       }
-      
+
       if (!inQuotes) {
-        if (char === "(") depth++;
-        else if (char === ")") depth--;
+        if (char === '(') depth++;
+        else if (char === ')') depth--;
       }
-      
-      if (!inQuotes && depth === 0 && char === ">" && nextChar === ">") {
+
+      if (!inQuotes && depth === 0 && char === '>' && nextChar === '>') {
         lastOperatorIndex = i;
       }
     }
-    
+
     if (lastOperatorIndex >= 0) {
       let beforeOperator = locator.substring(0, lastOperatorIndex).trim();
       let afterOperator = locator.substring(lastOperatorIndex + 2).trim();
-      
-      beforeOperator = beforeOperator.replace(/\s+$/, "");
-      afterOperator = afterOperator.replace(/^\s+/, "");
-      
+
+      beforeOperator = beforeOperator.replace(/\s+$/, '');
+      afterOperator = afterOperator.replace(/^\s+/, '');
+
       if (beforeOperator && afterOperator) {
         const baseElements = window.__locatorEngines.findBySmartLocator(
           beforeOperator,
           context
         );
-        
+
         if (baseElements && baseElements.error) {
           return baseElements;
         }
-        
+
         if (!Array.isArray(baseElements) || baseElements.length === 0) {
           return [];
         }
-        
+
         const finalElements = [];
         baseElements.forEach((baseEl) => {
           try {
@@ -68,11 +70,11 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
             if (matched && !matched.error && Array.isArray(matched)) {
               finalElements.push(...matched);
             }
-          } catch (err) {
-            // Skip errors for individual elements
+          } catch (_) {
+            // ignore
           }
         });
-        
+
         return [...new Set(finalElements)];
       }
     }
@@ -80,7 +82,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
 
   let searchRoot = document;
   if (context) {
-    if (context.nodeType === Node.DOCUMENT_NODE || context.nodeType === Node.ELEMENT_NODE) {
+    if (
+      context.nodeType === Node.DOCUMENT_NODE ||
+      context.nodeType === Node.ELEMENT_NODE
+    ) {
       searchRoot = context;
     } else if (context.querySelectorAll) {
       searchRoot = context;
@@ -91,25 +96,25 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
     let elements = [];
 
     const hasCustomPseudo =
-      locator.includes(":has(") ||
-      locator.includes(":text-is(") ||
-      locator.includes(":has-text(") ||
-      locator.includes(":visible") ||
-      locator.includes(":contains(") ||
-      locator.includes(":nth-match(") ||
-      locator.includes(":active") ||
-      locator.includes(":focus") ||
-      locator.includes(":checked") ||
-      locator.includes(":disabled") ||
-      locator.includes(":enabled") ||
-      locator.includes(":first-child") ||
-      locator.includes(":last-child") ||
-      locator.includes(":only-child") ||
-      locator.includes(":nth-child(") ||
-      locator.includes(":nth-last-child(") ||
-      locator.includes(":not(") ||
-      locator.includes(":is(") ||
-      locator.includes(":where(");
+      locator.includes(':has(') ||
+      locator.includes(':text-is(') ||
+      locator.includes(':has-text(') ||
+      locator.includes(':visible') ||
+      locator.includes(':contains(') ||
+      locator.includes(':nth-match(') ||
+      locator.includes(':active') ||
+      locator.includes(':focus') ||
+      locator.includes(':checked') ||
+      locator.includes(':disabled') ||
+      locator.includes(':enabled') ||
+      locator.includes(':first-child') ||
+      locator.includes(':last-child') ||
+      locator.includes(':only-child') ||
+      locator.includes(':nth-child(') ||
+      locator.includes(':nth-last-child(') ||
+      locator.includes(':not(') ||
+      locator.includes(':is(') ||
+      locator.includes(':where(');
 
     if (!hasCustomPseudo) {
       try {
@@ -121,15 +126,15 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       }
     }
 
-    if (locator.includes(":has(")) {
-      const hasIndex = locator.indexOf(":has(");
+    if (locator.includes(':has(')) {
+      const hasIndex = locator.indexOf(':has(');
       const baseSelector = locator.substring(0, hasIndex);
 
       let depth = 0;
       let hasEndIndex = -1;
       for (let i = hasIndex + 5; i < locator.length; i++) {
-        if (locator[i] === "(") depth++;
-        else if (locator[i] === ")") {
+        if (locator[i] === '(') depth++;
+        else if (locator[i] === ')') {
           if (depth === 0) {
             hasEndIndex = i;
             break;
@@ -139,7 +144,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       }
 
       if (hasEndIndex === -1) {
-        throw new Error("Invalid :has() syntax - missing closing parenthesis");
+        throw new Error('Invalid :has() syntax - missing closing parenthesis');
       }
 
       const hasContent = locator.substring(hasIndex + 5, hasEndIndex);
@@ -149,8 +154,8 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       try {
         baseElements = baseSelector
           ? Array.from(searchRoot.querySelectorAll(baseSelector))
-          : Array.from(searchRoot.querySelectorAll("*"));
-      } catch (error) {
+          : Array.from(searchRoot.querySelectorAll('*'));
+      } catch (_) {
         throw new Error(`Invalid base selector: ${baseSelector}`);
       }
 
@@ -164,10 +169,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
             return false;
           }
           return matched && matched.length > 0;
-        } catch (error) {
+        } catch (_) {
           try {
             return el.querySelector(hasContent) !== null;
-          } catch (err) {
+          } catch (_) {
             return false;
           }
         }
@@ -182,20 +187,20 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           }
         });
       }
-    } else if (locator.includes(":text-is(")) {
+    } else if (locator.includes(':text-is(')) {
       const textIsMatch = locator.match(/:text-is\((['"])([^'"]+)\1\)/);
       if (textIsMatch) {
-        const textIsIndex = locator.indexOf(":text-is(");
+        const textIsIndex = locator.indexOf(':text-is(');
         const beforeTextIs = locator.substring(0, textIsIndex);
         const text = textIsMatch[2];
         const textIsEnd = textIsIndex + textIsMatch[0].length;
         const afterTextIs = locator.substring(textIsEnd);
-        
-        const baseSelector = beforeTextIs || "*";
+
+        const baseSelector = beforeTextIs || '*';
         let baseElements;
         try {
           baseElements = Array.from(searchRoot.querySelectorAll(baseSelector));
-        } catch (error) {
+        } catch (_) {
           throw new Error(`Invalid base selector: ${baseSelector}`);
         }
 
@@ -226,21 +231,21 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           });
         }
       }
-    } else if (locator.includes(":has-text(")) {
+    } else if (locator.includes(':has-text(')) {
       const hasTextMatch = locator.match(/:has-text\((['"])([^'"]+)\1\)/);
       if (hasTextMatch) {
-        const hasTextIndex = locator.indexOf(":has-text(");
+        const hasTextIndex = locator.indexOf(':has-text(');
         const beforeHasText = locator.substring(0, hasTextIndex);
         const text = hasTextMatch[2];
         const hasTextEnd = hasTextIndex + hasTextMatch[0].length;
         const afterSelector = locator.substring(hasTextEnd);
-        const baseSelector = beforeHasText || "*";
+        const baseSelector = beforeHasText || '*';
         let baseElements;
         try {
           baseElements = baseSelector
             ? Array.from(searchRoot.querySelectorAll(baseSelector))
-            : Array.from(searchRoot.querySelectorAll("*"));
-        } catch (error) {
+            : Array.from(searchRoot.querySelectorAll('*'));
+        } catch (_) {
           throw new Error(`Invalid base selector: ${baseSelector}`);
         }
 
@@ -259,7 +264,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           });
         }
       }
-    } else if (locator.includes(":visible")) {
+    } else if (locator.includes(':visible')) {
       const visibleMatch = locator.match(/^([^:]*):visible(.*)$/);
       if (visibleMatch) {
         const [, baseSelector, afterSelector] = visibleMatch;
@@ -267,17 +272,17 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         try {
           baseElements = baseSelector
             ? Array.from(searchRoot.querySelectorAll(baseSelector))
-            : Array.from(searchRoot.querySelectorAll("*"));
-        } catch (error) {
+            : Array.from(searchRoot.querySelectorAll('*'));
+        } catch (_) {
           throw new Error(`Invalid base selector: ${baseSelector}`);
         }
 
         elements = baseElements.filter((el) => {
           const style = window.getComputedStyle(el);
           return (
-            style.display !== "none" &&
-            style.visibility !== "hidden" &&
-            style.opacity !== "0" &&
+            style.display !== 'none' &&
+            style.visibility !== 'hidden' &&
+            style.opacity !== '0' &&
             el.offsetHeight > 0 &&
             el.offsetWidth > 0
           );
@@ -293,21 +298,21 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           });
         }
       }
-    } else if (locator.includes(":contains(")) {
+    } else if (locator.includes(':contains(')) {
       const containsMatch = locator.match(/:contains\((['"])([^'"]+)\1\)/);
       if (containsMatch) {
-        const containsIndex = locator.indexOf(":contains(");
+        const containsIndex = locator.indexOf(':contains(');
         const beforeContains = locator.substring(0, containsIndex);
         const text = containsMatch[2];
         const containsEnd = containsIndex + containsMatch[0].length;
         const afterSelector = locator.substring(containsEnd);
-        const baseSelector = beforeContains || "*";
+        const baseSelector = beforeContains || '*';
         let baseElements;
         try {
           baseElements = baseSelector
             ? Array.from(searchRoot.querySelectorAll(baseSelector))
-            : Array.from(searchRoot.querySelectorAll("*"));
-        } catch (error) {
+            : Array.from(searchRoot.querySelectorAll('*'));
+        } catch (_) {
           throw new Error(`Invalid base selector: ${baseSelector}`);
         }
 
@@ -326,20 +331,28 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           });
         }
       }
-    } else if (locator.includes(":nth-match(")) {
+    } else if (locator.includes(':nth-match(')) {
       const nthMatchPattern = /:nth-match\(([^,]+),\s*(\d+)\)/;
       const match = locator.match(nthMatchPattern);
       if (match) {
-        const beforeNthMatch = locator.substring(0, locator.indexOf(":nth-match"));
+        const beforeNthMatch = locator.substring(
+          0,
+          locator.indexOf(':nth-match')
+        );
         const selector = match[1].trim();
         const n = parseInt(match[2], 10);
-        const afterNthMatch = locator.substring(locator.indexOf(":nth-match") + match[0].length);
+        const afterNthMatch = locator.substring(
+          locator.indexOf(':nth-match') + match[0].length
+        );
 
         let baseElements;
         try {
-          const fullSelector = beforeNthMatch + selector + afterNthMatch;
           baseElements = beforeNthMatch
-            ? Array.from(searchRoot.querySelectorAll(beforeNthMatch + selector + afterNthMatch))
+            ? Array.from(
+              searchRoot.querySelectorAll(
+                beforeNthMatch + selector + afterNthMatch
+              )
+            )
             : Array.from(searchRoot.querySelectorAll(selector + afterNthMatch));
         } catch (error) {
           throw new Error(`Invalid selector in :nth-match: ${error.message}`);
@@ -363,15 +376,15 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           }
         });
       }
-    } else if (locator.includes(":first-child")) {
-      const parts = locator.split(":first-child");
-      const baseSelector = parts[0] || "*";
-      const afterSelector = parts.slice(1).join(":first-child");
+    } else if (locator.includes(':first-child')) {
+      const parts = locator.split(':first-child');
+      const baseSelector = parts[0] || '*';
+      const afterSelector = parts.slice(1).join(':first-child');
 
       try {
         const allElements = baseSelector
           ? Array.from(document.querySelectorAll(baseSelector))
-          : Array.from(document.querySelectorAll("*"));
+          : Array.from(document.querySelectorAll('*'));
 
         elements = allElements.filter((el) => {
           const parent = el.parentElement;
@@ -392,15 +405,15 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
       }
-    } else if (locator.includes(":last-child")) {
-      const parts = locator.split(":last-child");
-      const baseSelector = parts[0] || "*";
-      const afterSelector = parts.slice(1).join(":last-child");
+    } else if (locator.includes(':last-child')) {
+      const parts = locator.split(':last-child');
+      const baseSelector = parts[0] || '*';
+      const afterSelector = parts.slice(1).join(':last-child');
 
       try {
         const allElements = baseSelector
           ? Array.from(document.querySelectorAll(baseSelector))
-          : Array.from(document.querySelectorAll("*"));
+          : Array.from(document.querySelectorAll('*'));
 
         elements = allElements.filter((el) => {
           const parent = el.parentElement;
@@ -421,15 +434,15 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
       }
-    } else if (locator.includes(":only-child")) {
-      const parts = locator.split(":only-child");
-      const baseSelector = parts[0] || "*";
-      const afterSelector = parts.slice(1).join(":only-child");
+    } else if (locator.includes(':only-child')) {
+      const parts = locator.split(':only-child');
+      const baseSelector = parts[0] || '*';
+      const afterSelector = parts.slice(1).join(':only-child');
 
       try {
         const allElements = baseSelector
           ? Array.from(document.querySelectorAll(baseSelector))
-          : Array.from(document.querySelectorAll("*"));
+          : Array.from(document.querySelectorAll('*'));
 
         elements = allElements.filter((el) => {
           const parent = el.parentElement;
@@ -449,18 +462,18 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
       }
-    } else if (locator.includes(":nth-child(")) {
+    } else if (locator.includes(':nth-child(')) {
       const nthChildMatch = locator.match(/:nth-child\(([^)]+)\)/);
       if (nthChildMatch) {
         const nthValue = nthChildMatch[1].trim();
         const parts = locator.split(/:nth-child\([^)]+\)/);
-        const baseSelector = parts[0] || "*";
-        const afterSelector = parts[1] || "";
+        const baseSelector = parts[0] || '*';
+        const afterSelector = parts[1] || '';
 
         try {
           const allElements = baseSelector
             ? Array.from(searchRoot.querySelectorAll(baseSelector))
-            : Array.from(searchRoot.querySelectorAll("*"));
+            : Array.from(searchRoot.querySelectorAll('*'));
 
           elements = allElements.filter((el) => {
             const parent = el.parentElement;
@@ -468,7 +481,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
             const siblings = Array.from(parent.children);
             const index = siblings.indexOf(el) + 1;
 
-            if (nthValue === "n" || nthValue === "1n") {
+            if (nthValue === 'n' || nthValue === '1n') {
               return true;
             } else if (/^\d+$/.test(nthValue)) {
               return index === parseInt(nthValue, 10);
@@ -502,18 +515,18 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           throw new Error(`Invalid :nth-child selector: ${error.message}`);
         }
       }
-    } else if (locator.includes(":nth-last-child(")) {
+    } else if (locator.includes(':nth-last-child(')) {
       const nthLastChildMatch = locator.match(/:nth-last-child\(([^)]+)\)/);
       if (nthLastChildMatch) {
         const nthValue = nthLastChildMatch[1].trim();
         const parts = locator.split(/:nth-last-child\([^)]+\)/);
-        const baseSelector = parts[0] || "*";
-        const afterSelector = parts[1] || "";
+        const baseSelector = parts[0] || '*';
+        const afterSelector = parts[1] || '';
 
         try {
           const allElements = baseSelector
             ? Array.from(searchRoot.querySelectorAll(baseSelector))
-            : Array.from(searchRoot.querySelectorAll("*"));
+            : Array.from(searchRoot.querySelectorAll('*'));
 
           elements = allElements.filter((el) => {
             const parent = el.parentElement;
@@ -521,7 +534,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
             const siblings = Array.from(parent.children);
             const index = siblings.length - siblings.indexOf(el);
 
-            if (nthValue === "n" || nthValue === "1n") {
+            if (nthValue === 'n' || nthValue === '1n') {
               return true;
             } else if (/^\d+$/.test(nthValue)) {
               return index === parseInt(nthValue, 10);
@@ -555,18 +568,18 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           throw new Error(`Invalid :nth-last-child selector: ${error.message}`);
         }
       }
-    } else if (locator.includes(":active")) {
-      const parts = locator.split(":active");
-      const baseSelector = parts[0] || "*";
-      const afterSelector = parts.slice(1).join(":active");
+    } else if (locator.includes(':active')) {
+      const parts = locator.split(':active');
+      const baseSelector = parts[0] || '*';
+      const afterSelector = parts.slice(1).join(':active');
 
       try {
         const allElements = baseSelector
           ? Array.from(document.querySelectorAll(baseSelector))
-          : Array.from(document.querySelectorAll("*"));
+          : Array.from(document.querySelectorAll('*'));
 
         elements = allElements.filter((el) => {
-          return document.activeElement === el && el.matches(":active");
+          return document.activeElement === el && el.matches(':active');
         });
 
         if (afterSelector && afterSelector.trim()) {
@@ -581,15 +594,15 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
       }
-    } else if (locator.includes(":focus")) {
-      const parts = locator.split(":focus");
-      const baseSelector = parts[0] || "*";
-      const afterSelector = parts.slice(1).join(":focus");
+    } else if (locator.includes(':focus')) {
+      const parts = locator.split(':focus');
+      const baseSelector = parts[0] || '*';
+      const afterSelector = parts.slice(1).join(':focus');
 
       try {
         const allElements = baseSelector
           ? Array.from(document.querySelectorAll(baseSelector))
-          : Array.from(document.querySelectorAll("*"));
+          : Array.from(document.querySelectorAll('*'));
 
         elements = allElements.filter((el) => {
           return document.activeElement === el;
@@ -607,21 +620,21 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
       }
-    } else if (locator.includes(":checked")) {
-      const parts = locator.split(":checked");
-      const baseSelector = parts[0] || "*";
-      const afterSelector = parts.slice(1).join(":checked");
+    } else if (locator.includes(':checked')) {
+      const parts = locator.split(':checked');
+      const baseSelector = parts[0] || '*';
+      const afterSelector = parts.slice(1).join(':checked');
 
       try {
         const allElements = baseSelector
           ? Array.from(document.querySelectorAll(baseSelector))
-          : Array.from(document.querySelectorAll("*"));
+          : Array.from(document.querySelectorAll('*'));
 
         elements = allElements.filter((el) => {
           return (
-            (el.type === "checkbox" && el.checked) ||
-            (el.type === "radio" && el.checked) ||
-            el.hasAttribute("checked")
+            (el.type === 'checkbox' && el.checked) ||
+            (el.type === 'radio' && el.checked) ||
+            el.hasAttribute('checked')
           );
         });
 
@@ -637,18 +650,18 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
       }
-    } else if (locator.includes(":disabled")) {
-      const parts = locator.split(":disabled");
-      const baseSelector = parts[0] || "*";
-      const afterSelector = parts.slice(1).join(":disabled");
+    } else if (locator.includes(':disabled')) {
+      const parts = locator.split(':disabled');
+      const baseSelector = parts[0] || '*';
+      const afterSelector = parts.slice(1).join(':disabled');
 
       try {
         const allElements = baseSelector
           ? Array.from(document.querySelectorAll(baseSelector))
-          : Array.from(document.querySelectorAll("*"));
+          : Array.from(document.querySelectorAll('*'));
 
         elements = allElements.filter((el) => {
-          return el.disabled === true || el.hasAttribute("disabled");
+          return el.disabled === true || el.hasAttribute('disabled');
         });
 
         if (afterSelector && afterSelector.trim()) {
@@ -663,18 +676,18 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
       }
-    } else if (locator.includes(":enabled")) {
-      const parts = locator.split(":enabled");
-      const baseSelector = parts[0] || "*";
-      const afterSelector = parts.slice(1).join(":enabled");
+    } else if (locator.includes(':enabled')) {
+      const parts = locator.split(':enabled');
+      const baseSelector = parts[0] || '*';
+      const afterSelector = parts.slice(1).join(':enabled');
 
       try {
         const allElements = baseSelector
           ? Array.from(document.querySelectorAll(baseSelector))
-          : Array.from(document.querySelectorAll("*"));
+          : Array.from(document.querySelectorAll('*'));
 
         elements = allElements.filter((el) => {
-          return el.disabled !== true && !el.hasAttribute("disabled");
+          return el.disabled !== true && !el.hasAttribute('disabled');
         });
 
         if (afterSelector && afterSelector.trim()) {
@@ -689,13 +702,13 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
       }
-    } else if (locator.includes(":not(")) {
-      const notIndex = locator.indexOf(":not(");
+    } else if (locator.includes(':not(')) {
+      const notIndex = locator.indexOf(':not(');
       let depth = 0;
       let notEndIndex = -1;
       for (let i = notIndex + 5; i < locator.length; i++) {
-        if (locator[i] === "(") depth++;
-        else if (locator[i] === ")") {
+        if (locator[i] === '(') depth++;
+        else if (locator[i] === ')') {
           if (depth === 0) {
             notEndIndex = i;
             break;
@@ -705,27 +718,26 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       }
 
       if (notEndIndex === -1) {
-        throw new Error("Invalid :not() syntax - missing closing parenthesis");
+        throw new Error('Invalid :not() syntax - missing closing parenthesis');
       }
 
       const notSelector = locator.substring(notIndex + 5, notEndIndex);
-      const parts = locator.split(/:not\([^)]+\)/);
       const beforeNot = locator.substring(0, notIndex);
       const afterNot = locator.substring(notEndIndex + 1);
 
-      let baseSelector = beforeNot || "*";
-      const afterSelector = afterNot || "";
+      let baseSelector = beforeNot || '*';
+      const afterSelector = afterNot || '';
 
       try {
         try {
           return Array.from(searchRoot.querySelectorAll(locator));
-        } catch (nativeError) {
+        } catch (_) {
           // Native failed, use custom logic
         }
 
         const allElements = baseSelector
           ? Array.from(searchRoot.querySelectorAll(baseSelector))
-          : Array.from(searchRoot.querySelectorAll("*"));
+          : Array.from(searchRoot.querySelectorAll('*'));
 
         elements = allElements.filter((el) => {
           try {
@@ -737,9 +749,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
             if (matched && matched.error) {
               return true;
             }
-            const elementMatches = matched && matched.length > 0 && matched.includes(el);
+            const elementMatches =
+              matched && matched.length > 0 && matched.includes(el);
             return !elementMatches;
-          } catch (err) {
+          } catch (_) {
             try {
               return !el.matches(notSelector);
             } catch {
@@ -760,24 +773,26 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       } catch (err) {
         throw new Error(`Invalid :not selector: ${err.message}`);
       }
-    } else if (locator.includes(":is(") || locator.includes(":where(")) {
+    } else if (locator.includes(':is(') || locator.includes(':where(')) {
       try {
         return Array.from(searchRoot.querySelectorAll(locator));
-      } catch (error) {
+      } catch (_) {
         const isWhereMatch = locator.match(/:(is|where)\(([^)]+)\)/);
         if (isWhereMatch) {
-          const selectors = isWhereMatch[2].split(",").map((s) => s.trim());
+          const selectors = isWhereMatch[2].split(',').map((s) => s.trim());
           const parts = locator.split(/:(is|where)\([^)]+\)/);
-          const baseSelector = parts[0] || "";
-          const afterSelector = parts[2] || "";
+          const baseSelector = parts[0] || '';
+          const afterSelector = parts[2] || '';
 
           elements = [];
           selectors.forEach((sel) => {
             try {
               const fullSelector = baseSelector + sel + afterSelector;
-              const matched = Array.from(searchRoot.querySelectorAll(fullSelector));
+              const matched = Array.from(
+                searchRoot.querySelectorAll(fullSelector)
+              );
               elements.push(...matched);
-            } catch (err) {
+            } catch (_) {
               // Skip invalid selector
             }
           });
@@ -803,7 +818,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
   }
 };
 
-console.log(
-  "[Smart Locator Engine] Loaded - window.__locatorEngines.findBySmartLocator available:",
+log(
+  '[Smart Locator Engine] Loaded - window.__locatorEngines.findBySmartLocator available:',
   typeof window.__locatorEngines.findBySmartLocator
 );

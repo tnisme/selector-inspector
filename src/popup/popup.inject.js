@@ -1,5 +1,5 @@
-import { nextRequestId, getCurrentRequestId } from "./popup.state.js";
-import { showLoading, showResult, hideResult } from "./popup.ui.js";
+import { nextRequestId, getCurrentRequestId } from './popup.state.js';
+import { showLoading, showResult, hideResult } from './popup.ui.js';
 
 let inspectionTimeout;
 let typeSelect, locatorInput;
@@ -19,13 +19,13 @@ function setInjectionGlobals(ts, li) {
 
 function clearOverlays() {
   const container = document.getElementById(
-    "locator-inspector-overlay-container"
+    'locator-inspector-overlay-container'
   );
   if (container) {
     if (container._cleanup) container._cleanup();
     container.remove();
   }
-  const styles = document.getElementById("locator-inspector-styles");
+  const styles = document.getElementById('locator-inspector-styles');
   if (styles) styles.remove();
 }
 
@@ -44,7 +44,7 @@ async function triggerInspection() {
     return;
   }
 
-  showLoading("Live inspecting...");
+  showLoading('Live inspecting...');
 
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
   const tab = tabs[0];
@@ -55,16 +55,16 @@ async function triggerInspection() {
     const checkResult = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: () => typeof window.__locatorInspect,
-      world: "MAIN",
+      world: 'MAIN',
     }).catch(() => null);
 
-    if (checkResult?.[0]?.result === "function") {
+    if (checkResult?.[0]?.result === 'function') {
       isLoaded = true;
       break;
     }
 
     if (i === 0) {
-      chrome.runtime.sendMessage({ type: "panel-opened" }).catch(() => {});
+      chrome.runtime.sendMessage({ type: 'panel-opened' }).catch(() => {});
       await new Promise((resolve) => setTimeout(resolve, 200));
     } else {
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -73,8 +73,8 @@ async function triggerInspection() {
 
   if (!isLoaded) {
     return showResult(
-      "Inspection function not loaded. Please refresh the page and try again.",
-      "error"
+      'Inspection function not loaded. Please refresh the page and try again.',
+      'error'
     );
   }
 
@@ -86,18 +86,18 @@ async function triggerInspection() {
       if (window.__locatorInspect) window.__locatorInspect.__lastRequestId = id;
     },
     args: [requestId],
-    world: "MAIN",
+    world: 'MAIN',
   });
 
   const results = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
     func: (locator, type, reqId) => {
       try {
-        if (typeof window.__locatorInspect !== "function") {
+        if (typeof window.__locatorInspect !== 'function') {
           return {
             ok: false,
             error:
-              "Inspection function not loaded. Please refresh the page and try again.",
+              'Inspection function not loaded. Please refresh the page and try again.',
           };
         }
         return {
@@ -109,20 +109,20 @@ async function triggerInspection() {
       }
     },
     args: [locator, type, requestId],
-    world: "MAIN",
+    world: 'MAIN',
   });
 
   if (requestId !== getCurrentRequestId()) return;
 
   const res = results?.[0]?.result;
-  if (!res) return showResult("No result", "error");
+  if (!res) return showResult('No result', 'error');
 
-  if (!res.ok) return showResult(res.error, "error");
+  if (!res.ok) return showResult(res.error, 'error');
 
   const r = res.value;
-  if (r.error) showResult(r.error, "error");
-  else if (r.count === 0) showResult("No elements found", "error");
-  else showResult(`Found ${r.count} element(s)\n\n${r.details}`, "success");
+  if (r.error) showResult(r.error, 'error');
+  else if (r.count === 0) showResult('No elements found', 'error');
+  else showResult(`Found ${r.count} element(s)\n\n${r.details}`, 'success');
 }
 
 async function clearPageOverlays() {
@@ -133,7 +133,7 @@ async function clearPageOverlays() {
   chrome.scripting.executeScript({
     target: { tabId: tab.id },
     func: clearOverlays,
-    world: "MAIN",
+    world: 'MAIN',
   });
 }
 
