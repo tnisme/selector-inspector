@@ -1,9 +1,11 @@
 window.__locatorEngines = window.__locatorEngines || {};
-window.__locatorEngines.findByCss = function findByCss(selector) {
+window.__locatorEngines.findByCss = function findByCss(selector, context) {
   if (!selector || selector.trim().length === 0) return [];
 
   try {
-    const elements = Array.from(document.querySelectorAll(selector));
+    // Use context if provided, otherwise use document
+    const searchRoot = context || document;
+    const elements = Array.from(searchRoot.querySelectorAll(selector));
     return elements;
   } catch (error) {
     return {

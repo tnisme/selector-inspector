@@ -1,4 +1,69 @@
 window.__locatorEngines = window.__locatorEngines || {};
+
+/**
+ * Detect locator type based on syntax patterns
+ */
+window.__locatorEngines.detectLocatorType = function detectLocatorType(
+  locator
+) {
+  if (!locator || typeof locator !== "string") return "smart";
+
+  const trimmed = locator.trim();
+
+  // XPath detection: starts with / or // or contains valid XPath patterns
+  if (trimmed.startsWith("/") || trimmed.startsWith("(")) {
+    return "xpath";
+  }
+
+  // Playwright detection
+  if (
+    trimmed.includes("getByRole(") ||
+    trimmed.includes("getByText(") ||
+    trimmed.includes("getByTestId(")
+  ) {
+    return "playwright";
+  }
+
+  return "smart"; // Default to smart locator (handles CSS and custom syntax)
+};
+
+/**
+ * Execute a locator of any type and return elements
+ */
+window.__locatorEngines.executeLocator = function executeLocator(
+  locator,
+  context
+) {
+  try {
+    const type = window.__locatorEngines.detectLocatorType(locator);
+
+    switch (type) {
+      case "xpath":
+        if (!window.__locatorEngines.findByXPath) {
+          return { error: "XPath engine not loaded" };
+        }
+        return window.__locatorEngines.findByXPath(locator, context);
+      case "playwright":
+        if (!window.__locatorEngines.findByPlaywright) {
+          return { error: "Playwright engine not loaded" };
+        }
+        return window.__locatorEngines.findByPlaywright(locator, context);
+      case "smart":
+        if (!window.__locatorEngines.findBySmartLocator) {
+          return { error: "Smart locator engine not loaded" };
+        }
+        return window.__locatorEngines.findBySmartLocator(locator, context);
+      default:
+        if (!window.__locatorEngines.findBySmartLocator) {
+          return { error: "Smart locator engine not loaded" };
+        }
+        return window.__locatorEngines.findBySmartLocator(locator, context);
+    }
+  } catch (err) {
+    return { error: `executeLocator error: ${err.message}` };
+  }
+};
+
 window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
   locator,
   context
@@ -11,12 +76,12 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
     let depth = 0;
     let inQuotes = false;
     let quoteChar = null;
-    
+
     for (let i = 0; i < locator.length - 1; i++) {
       const char = locator[i];
       const nextChar = locator[i + 1];
       const prevChar = locator[i - 1];
-      
+
       if ((char === '"' || char === "'") && prevChar !== "\\") {
         if (!inQuotes) {
           inQuotes = true;
@@ -26,45 +91,61 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           quoteChar = null;
         }
       }
-      
+
       if (!inQuotes) {
         if (char === "(") depth++;
         else if (char === ")") depth--;
       }
-      
+
       if (!inQuotes && depth === 0 && char === ">" && nextChar === ">") {
         lastOperatorIndex = i;
       }
     }
-    
+
     if (lastOperatorIndex >= 0) {
       let beforeOperator = locator.substring(0, lastOperatorIndex).trim();
       let afterOperator = locator.substring(lastOperatorIndex + 2).trim();
-      
+
       beforeOperator = beforeOperator.replace(/\s+$/, "");
       afterOperator = afterOperator.replace(/^\s+/, "");
-      
+
       if (beforeOperator && afterOperator) {
-        const baseElements = window.__locatorEngines.findBySmartLocator(
-          beforeOperator,
-          context
-        );
-        
+        // Execute the before locator (supports any type)
+        let baseElements;
+        try {
+          baseElements = window.__locatorEngines.executeLocator(
+            beforeOperator,
+            context
+          );
+        } catch (err) {
+          // If executeLocator throws, wrap it in an error object
+          return {
+            error: `Failed to execute '${beforeOperator}': ${err.message}`,
+          };
+        }
+
         if (baseElements && baseElements.error) {
           return baseElements;
         }
-        
+
         if (!Array.isArray(baseElements) || baseElements.length === 0) {
           return [];
         }
-        
+
         const finalElements = [];
-        baseElements.forEach((baseEl) => {
+        baseElements.forEach((baseEl, idx) => {
           try {
-            const matched = window.__locatorEngines.findBySmartLocator(
-              afterOperator,
-              baseEl
-            );
+            // Execute the after locator (supports any type)
+            let matched;
+            try {
+              matched = window.__locatorEngines.executeLocator(
+                afterOperator,
+                baseEl
+              );
+            } catch (err) {
+              // If executeLocator throws for individual elements, skip it
+              return;
+            }
             if (matched && !matched.error && Array.isArray(matched)) {
               finalElements.push(...matched);
             }
@@ -72,15 +153,22 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
             // Skip errors for individual elements
           }
         });
-        
+
         return [...new Set(finalElements)];
+      } else {
+        return [];
       }
+    } else {
+      return [];
     }
   }
 
   let searchRoot = document;
   if (context) {
-    if (context.nodeType === Node.DOCUMENT_NODE || context.nodeType === Node.ELEMENT_NODE) {
+    if (
+      context.nodeType === Node.DOCUMENT_NODE ||
+      context.nodeType === Node.ELEMENT_NODE
+    ) {
       searchRoot = context;
     } else if (context.querySelectorAll) {
       searchRoot = context;
@@ -190,7 +278,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         const text = textIsMatch[2];
         const textIsEnd = textIsIndex + textIsMatch[0].length;
         const afterTextIs = locator.substring(textIsEnd);
-        
+
         const baseSelector = beforeTextIs || "*";
         let baseElements;
         try {
@@ -330,16 +418,25 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       const nthMatchPattern = /:nth-match\(([^,]+),\s*(\d+)\)/;
       const match = locator.match(nthMatchPattern);
       if (match) {
-        const beforeNthMatch = locator.substring(0, locator.indexOf(":nth-match"));
+        const beforeNthMatch = locator.substring(
+          0,
+          locator.indexOf(":nth-match")
+        );
         const selector = match[1].trim();
         const n = parseInt(match[2], 10);
-        const afterNthMatch = locator.substring(locator.indexOf(":nth-match") + match[0].length);
+        const afterNthMatch = locator.substring(
+          locator.indexOf(":nth-match") + match[0].length
+        );
 
         let baseElements;
         try {
           const fullSelector = beforeNthMatch + selector + afterNthMatch;
           baseElements = beforeNthMatch
-            ? Array.from(searchRoot.querySelectorAll(beforeNthMatch + selector + afterNthMatch))
+            ? Array.from(
+                searchRoot.querySelectorAll(
+                  beforeNthMatch + selector + afterNthMatch
+                )
+              )
             : Array.from(searchRoot.querySelectorAll(selector + afterNthMatch));
         } catch (error) {
           throw new Error(`Invalid selector in :nth-match: ${error.message}`);
@@ -737,7 +834,8 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
             if (matched && matched.error) {
               return true;
             }
-            const elementMatches = matched && matched.length > 0 && matched.includes(el);
+            const elementMatches =
+              matched && matched.length > 0 && matched.includes(el);
             return !elementMatches;
           } catch (err) {
             try {
@@ -775,7 +873,9 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           selectors.forEach((sel) => {
             try {
               const fullSelector = baseSelector + sel + afterSelector;
-              const matched = Array.from(searchRoot.querySelectorAll(fullSelector));
+              const matched = Array.from(
+                searchRoot.querySelectorAll(fullSelector)
+              );
               elements.push(...matched);
             } catch (err) {
               // Skip invalid selector

@@ -1,15 +1,21 @@
 window.__locatorEngines = window.__locatorEngines || {};
-window.__locatorEngines.findByPlaywright = function findByPlaywright(selector) {
+window.__locatorEngines.findByPlaywright = function findByPlaywright(
+  selector,
+  context
+) {
   let elements = [];
+  // Use context if provided, otherwise use document
+  const searchRoot = context || document;
+
   if (selector.includes("getByRole")) {
     const roleMatch = selector.match(/getByRole\(['\"]([^'\"]+)['\"]\)/);
     if (roleMatch) {
       const role = roleMatch[1];
-      elements = Array.from(document.querySelectorAll(`[role="${role}"]`));
+      elements = Array.from(searchRoot.querySelectorAll(`[role="${role}"]`));
       if (role === "button") {
         elements.push(
           ...Array.from(
-            document.querySelectorAll(
+            searchRoot.querySelectorAll(
               'button, input[type="button"], input[type="submit"]'
             )
           )
@@ -17,7 +23,7 @@ window.__locatorEngines.findByPlaywright = function findByPlaywright(selector) {
       } else if (role === "textbox") {
         elements.push(
           ...Array.from(
-            document.querySelectorAll(
+            searchRoot.querySelectorAll(
               'input[type="text"], input[type="email"], input[type="password"], textarea'
             )
           )
@@ -28,7 +34,7 @@ window.__locatorEngines.findByPlaywright = function findByPlaywright(selector) {
     const textMatch = selector.match(/getByText\(['\"]([^'\"]+)['\"]\)/);
     if (textMatch) {
       const text = textMatch[1];
-      elements = Array.from(document.querySelectorAll("*")).filter((el) => {
+      elements = Array.from(searchRoot.querySelectorAll("*")).filter((el) => {
         const textContent = el.textContent && el.textContent.trim();
         const hasChildren =
           el.children.length === 0 ||
@@ -44,7 +50,7 @@ window.__locatorEngines.findByPlaywright = function findByPlaywright(selector) {
     if (testIdMatch) {
       const testId = testIdMatch[1];
       elements = Array.from(
-        document.querySelectorAll(
+        searchRoot.querySelectorAll(
           `[data-testid="${testId}"], [data-test-id="${testId}"], [data-cy="${testId}"]`
         )
       );

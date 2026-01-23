@@ -1,10 +1,12 @@
 window.__locatorEngines = window.__locatorEngines || {};
-window.__locatorEngines.findByXPath = function findByXPath(xpath) {
+window.__locatorEngines.findByXPath = function findByXPath(xpath, context) {
   try {
     const results = [];
+    // Use context if provided, otherwise use document
+    const searchRoot = context || document;
     const query = document.evaluate(
       xpath,
-      document,
+      searchRoot,
       null,
       XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
       null
