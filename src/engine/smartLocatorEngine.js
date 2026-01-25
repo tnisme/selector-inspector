@@ -244,14 +244,54 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
 
       elements = baseElements.filter((el) => {
         try {
-          const matched = window.__locatorEngines.findBySmartLocator(
-            hasContent,
-            el
-          );
-          if (matched && matched.error) {
-            return false;
+          // Handle child combinator (>) at the start of hasContent
+          if (hasContent.startsWith(">")) {
+            // For child combinator, only search direct children
+            const selector = hasContent.substring(1).trim();
+            const directChildren = Array.from(el.children);
+
+            // Check if any direct child matches the selector
+            if (
+              selector.includes(":text-is(") ||
+              selector.includes(":has(") ||
+              selector.includes(":contains(") ||
+              selector.includes(":visible") ||
+              selector.includes(":nth-match(")
+            ) {
+              // For custom pseudo-selectors, search once within parent
+              // to find all matching descendants
+              const allMatches = window.__locatorEngines.findBySmartLocator(
+                selector,
+                el
+              );
+              // Check if ANY direct child is in the matches
+              // This ensures we only match direct children, not deeper descendants
+              return (
+                allMatches &&
+                Array.isArray(allMatches) &&
+                allMatches.some((match) => directChildren.includes(match))
+              );
+            } else {
+              // For standard CSS selectors, check each direct child
+              return directChildren.some((child) => {
+                try {
+                  return child.matches(selector);
+                } catch {
+                  return false;
+                }
+              });
+            }
+          } else {
+            // For normal descendant selector, search within the element
+            const matched = window.__locatorEngines.findBySmartLocator(
+              hasContent,
+              el
+            );
+            if (matched && matched.error) {
+              return false;
+            }
+            return matched && matched.length > 0;
           }
-          return matched && matched.length > 0;
         } catch (error) {
           try {
             return el.querySelector(hasContent) !== null;
