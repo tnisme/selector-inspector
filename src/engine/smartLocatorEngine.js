@@ -1,4 +1,151 @@
 window.__locatorEngines = window.__locatorEngines || {};
+
+/**
+ * Detect locator type based on syntax patterns
+ */
+window.__locatorEngines.detectLocatorType = function detectLocatorType(
+  locator
+) {
+  if (!locator || typeof locator !== "string") return "smart";
+
+  const trimmed = locator.trim();
+
+  // XPath detection: starts with / or // or contains valid XPath patterns
+  if (trimmed.startsWith("/") || trimmed.startsWith("(")) {
+    return "xpath";
+  }
+
+  // Playwright detection
+  if (
+    trimmed.includes("getByRole(") ||
+    trimmed.includes("getByText(") ||
+    trimmed.includes("getByTestId(")
+  ) {
+    return "playwright";
+  }
+
+  return "smart"; // Default to smart locator (handles CSS and custom syntax)
+};
+
+/**
+ * Execute a locator of any type and return elements
+ */
+window.__locatorEngines.executeLocator = function executeLocator(
+  locator,
+  context
+) {
+  try {
+    const type = window.__locatorEngines.detectLocatorType(locator);
+
+    switch (type) {
+      case "xpath":
+        if (!window.__locatorEngines.findByXPath) {
+          return { error: "XPath engine not loaded" };
+        }
+        return window.__locatorEngines.findByXPath(locator, context);
+      case "playwright":
+        if (!window.__locatorEngines.findByPlaywright) {
+          return { error: "Playwright engine not loaded" };
+        }
+        return window.__locatorEngines.findByPlaywright(locator, context);
+      case "smart":
+        if (!window.__locatorEngines.findBySmartLocator) {
+          return { error: "Smart locator engine not loaded" };
+        }
+        return window.__locatorEngines.findBySmartLocator(locator, context);
+      default:
+        if (!window.__locatorEngines.findBySmartLocator) {
+          return { error: "Smart locator engine not loaded" };
+        }
+        return window.__locatorEngines.findBySmartLocator(locator, context);
+    }
+  } catch (err) {
+    return { error: `executeLocator error: ${err.message}` };
+  }
+};
+
+window.__locatorEngines.processAfterSelector = function (
+  elements,
+  afterSelector
+) {
+  if (!elements || elements.length === 0) return [];
+  if (!afterSelector || !afterSelector.trim()) return elements;
+
+  const trimmed = afterSelector.trim();
+
+  if (trimmed.startsWith("+")) {
+    const selector = trimmed.substring(1).trim();
+    const nextElements = [];
+    elements.forEach((el) => {
+      const next = el.nextElementSibling;
+      if (next && window.__locatorEngines.matchesSelector(next, selector)) {
+        nextElements.push(next);
+      }
+    });
+    return nextElements;
+  }
+
+  if (trimmed.startsWith("~")) {
+    const selector = trimmed.substring(1).trim();
+    const nextElements = [];
+    elements.forEach((el) => {
+      let next = el.nextElementSibling;
+      while (next) {
+        if (window.__locatorEngines.matchesSelector(next, selector)) {
+          nextElements.push(next);
+        }
+        next = next.nextElementSibling;
+      }
+    });
+    return [...new Set(nextElements)];
+  }
+
+  if (trimmed.startsWith(">")) {
+    const selector = trimmed.substring(1).trim();
+    const childrenElements = [];
+    elements.forEach((el) => {
+      const children = Array.from(el.children);
+      children.forEach((child) => {
+        if (window.__locatorEngines.matchesSelector(child, selector)) {
+          childrenElements.push(child);
+        }
+      });
+    });
+    return [...new Set(childrenElements)];
+  }
+
+  if (afterSelector.match(/^\s/)) {
+    const descendantElements = [];
+    elements.forEach((el) => {
+      const matches = window.__locatorEngines.findBySmartLocator(trimmed, el);
+      if (matches && Array.isArray(matches)) {
+        descendantElements.push(...matches);
+      }
+    });
+    return [...new Set(descendantElements)];
+  }
+
+  return elements.filter((el) =>
+    window.__locatorEngines.matchesSelector(el, trimmed)
+  );
+};
+
+window.__locatorEngines.matchesSelector = function (el, selector) {
+  if (!el || !selector) return false;
+  try {
+    if (el.matches(selector)) return true;
+  } catch { }
+
+  try {
+    const parent = el.parentElement || el.getRootNode();
+    if (!parent || !parent.querySelectorAll) return false;
+    const matches = window.__locatorEngines.findBySmartLocator(selector, parent);
+    return Array.isArray(matches) && matches.includes(el);
+  } catch {
+    return false;
+  }
+};
+
 window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
   locator,
   context
@@ -11,12 +158,12 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
     let depth = 0;
     let inQuotes = false;
     let quoteChar = null;
-    
+
     for (let i = 0; i < locator.length - 1; i++) {
       const char = locator[i];
       const nextChar = locator[i + 1];
       const prevChar = locator[i - 1];
-      
+
       if ((char === '"' || char === "'") && prevChar !== "\\") {
         if (!inQuotes) {
           inQuotes = true;
@@ -26,45 +173,61 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           quoteChar = null;
         }
       }
-      
+
       if (!inQuotes) {
         if (char === "(") depth++;
         else if (char === ")") depth--;
       }
-      
+
       if (!inQuotes && depth === 0 && char === ">" && nextChar === ">") {
         lastOperatorIndex = i;
       }
     }
-    
+
     if (lastOperatorIndex >= 0) {
       let beforeOperator = locator.substring(0, lastOperatorIndex).trim();
       let afterOperator = locator.substring(lastOperatorIndex + 2).trim();
-      
+
       beforeOperator = beforeOperator.replace(/\s+$/, "");
       afterOperator = afterOperator.replace(/^\s+/, "");
-      
+
       if (beforeOperator && afterOperator) {
-        const baseElements = window.__locatorEngines.findBySmartLocator(
-          beforeOperator,
-          context
-        );
-        
+        // Execute the before locator (supports any type)
+        let baseElements;
+        try {
+          baseElements = window.__locatorEngines.executeLocator(
+            beforeOperator,
+            context
+          );
+        } catch (err) {
+          // If executeLocator throws, wrap it in an error object
+          return {
+            error: `Failed to execute '${beforeOperator}': ${err.message}`,
+          };
+        }
+
         if (baseElements && baseElements.error) {
           return baseElements;
         }
-        
+
         if (!Array.isArray(baseElements) || baseElements.length === 0) {
           return [];
         }
-        
+
         const finalElements = [];
-        baseElements.forEach((baseEl) => {
+        baseElements.forEach((baseEl, idx) => {
           try {
-            const matched = window.__locatorEngines.findBySmartLocator(
-              afterOperator,
-              baseEl
-            );
+            // Execute the after locator (supports any type)
+            let matched;
+            try {
+              matched = window.__locatorEngines.executeLocator(
+                afterOperator,
+                baseEl
+              );
+            } catch (err) {
+              // If executeLocator throws for individual elements, skip it
+              return;
+            }
             if (matched && !matched.error && Array.isArray(matched)) {
               finalElements.push(...matched);
             }
@@ -72,15 +235,22 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
             // Skip errors for individual elements
           }
         });
-        
+
         return [...new Set(finalElements)];
+      } else {
+        return [];
       }
+    } else {
+      return [];
     }
   }
 
   let searchRoot = document;
   if (context) {
-    if (context.nodeType === Node.DOCUMENT_NODE || context.nodeType === Node.ELEMENT_NODE) {
+    if (
+      context.nodeType === Node.DOCUMENT_NODE ||
+      context.nodeType === Node.ELEMENT_NODE
+    ) {
       searchRoot = context;
     } else if (context.querySelectorAll) {
       searchRoot = context;
@@ -156,14 +326,54 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
 
       elements = baseElements.filter((el) => {
         try {
-          const matched = window.__locatorEngines.findBySmartLocator(
-            hasContent,
-            el
-          );
-          if (matched && matched.error) {
-            return false;
+          // Handle child combinator (>) at the start of hasContent
+          if (hasContent.startsWith(">")) {
+            // For child combinator, only search direct children
+            const selector = hasContent.substring(1).trim();
+            const directChildren = Array.from(el.children);
+
+            // Check if any direct child matches the selector
+            if (
+              selector.includes(":text-is(") ||
+              selector.includes(":has(") ||
+              selector.includes(":contains(") ||
+              selector.includes(":visible") ||
+              selector.includes(":nth-match(")
+            ) {
+              // For custom pseudo-selectors, search once within parent
+              // to find all matching descendants
+              const allMatches = window.__locatorEngines.findBySmartLocator(
+                selector,
+                el
+              );
+              // Check if ANY direct child is in the matches
+              // This ensures we only match direct children, not deeper descendants
+              return (
+                allMatches &&
+                Array.isArray(allMatches) &&
+                allMatches.some((match) => directChildren.includes(match))
+              );
+            } else {
+              // For standard CSS selectors, check each direct child
+              return directChildren.some((child) => {
+                try {
+                  return child.matches(selector);
+                } catch {
+                  return false;
+                }
+              });
+            }
+          } else {
+            // For normal descendant selector, search within the element
+            const matched = window.__locatorEngines.findBySmartLocator(
+              hasContent,
+              el
+            );
+            if (matched && matched.error) {
+              return false;
+            }
+            return matched && matched.length > 0;
           }
-          return matched && matched.length > 0;
         } catch (error) {
           try {
             return el.querySelector(hasContent) !== null;
@@ -174,13 +384,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       });
 
       if (afterSelector && afterSelector.trim()) {
-        elements = elements.filter((el) => {
-          try {
-            return el.matches(afterSelector.trim());
-          } catch {
-            return false;
-          }
-        });
+        elements = window.__locatorEngines.processAfterSelector(
+          elements,
+          afterSelector
+        );
       }
     } else if (locator.includes(":text-is(")) {
       const textIsMatch = locator.match(/:text-is\((['"])([^'"]+)\1\)/);
@@ -190,7 +397,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         const text = textIsMatch[2];
         const textIsEnd = textIsIndex + textIsMatch[0].length;
         const afterTextIs = locator.substring(textIsEnd);
-        
+
         const baseSelector = beforeTextIs || "*";
         let baseElements;
         try {
@@ -205,25 +412,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterTextIs && afterTextIs.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              const parent = el.parentElement || searchRoot;
-              const matched = window.__locatorEngines.findBySmartLocator(
-                afterTextIs.trim(),
-                parent
-              );
-              if (matched && !matched.error) {
-                return matched.includes(el);
-              }
-              return el.matches(afterTextIs.trim());
-            } catch {
-              try {
-                return el.matches(afterTextIs.trim());
-              } catch {
-                return false;
-              }
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterTextIs
+          );
         }
       }
     } else if (locator.includes(":has-text(")) {
@@ -250,13 +442,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       }
     } else if (locator.includes(":visible")) {
@@ -284,13 +473,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       }
     } else if (locator.includes(":contains(")) {
@@ -317,29 +503,35 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       }
     } else if (locator.includes(":nth-match(")) {
       const nthMatchPattern = /:nth-match\(([^,]+),\s*(\d+)\)/;
       const match = locator.match(nthMatchPattern);
       if (match) {
-        const beforeNthMatch = locator.substring(0, locator.indexOf(":nth-match"));
+        const beforeNthMatch = locator.substring(
+          0,
+          locator.indexOf(":nth-match")
+        );
         const selector = match[1].trim();
         const n = parseInt(match[2], 10);
-        const afterNthMatch = locator.substring(locator.indexOf(":nth-match") + match[0].length);
+        const afterNthMatch = locator.substring(
+          locator.indexOf(":nth-match") + match[0].length
+        );
 
         let baseElements;
         try {
           const fullSelector = beforeNthMatch + selector + afterNthMatch;
           baseElements = beforeNthMatch
-            ? Array.from(searchRoot.querySelectorAll(beforeNthMatch + selector + afterNthMatch))
+            ? Array.from(
+              searchRoot.querySelectorAll(
+                beforeNthMatch + selector + afterNthMatch
+              )
+            )
             : Array.from(searchRoot.querySelectorAll(selector + afterNthMatch));
         } catch (error) {
           throw new Error(`Invalid selector in :nth-match: ${error.message}`);
@@ -381,13 +573,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
@@ -410,13 +599,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
@@ -438,13 +624,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
@@ -570,13 +753,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
@@ -596,13 +776,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
@@ -626,13 +803,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
@@ -652,13 +826,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
@@ -678,13 +849,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
@@ -737,7 +905,8 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
             if (matched && matched.error) {
               return true;
             }
-            const elementMatches = matched && matched.length > 0 && matched.includes(el);
+            const elementMatches =
+              matched && matched.length > 0 && matched.includes(el);
             return !elementMatches;
           } catch (err) {
             try {
@@ -749,13 +918,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       } catch (err) {
         throw new Error(`Invalid :not selector: ${err.message}`);
@@ -775,7 +941,9 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           selectors.forEach((sel) => {
             try {
               const fullSelector = baseSelector + sel + afterSelector;
-              const matched = Array.from(searchRoot.querySelectorAll(fullSelector));
+              const matched = Array.from(
+                searchRoot.querySelectorAll(fullSelector)
+              );
               elements.push(...matched);
             } catch (err) {
               // Skip invalid selector
