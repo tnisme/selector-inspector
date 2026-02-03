@@ -64,6 +64,88 @@ window.__locatorEngines.executeLocator = function executeLocator(
   }
 };
 
+window.__locatorEngines.processAfterSelector = function (
+  elements,
+  afterSelector
+) {
+  if (!elements || elements.length === 0) return [];
+  if (!afterSelector || !afterSelector.trim()) return elements;
+
+  const trimmed = afterSelector.trim();
+
+  if (trimmed.startsWith("+")) {
+    const selector = trimmed.substring(1).trim();
+    const nextElements = [];
+    elements.forEach((el) => {
+      const next = el.nextElementSibling;
+      if (next && window.__locatorEngines.matchesSelector(next, selector)) {
+        nextElements.push(next);
+      }
+    });
+    return nextElements;
+  }
+
+  if (trimmed.startsWith("~")) {
+    const selector = trimmed.substring(1).trim();
+    const nextElements = [];
+    elements.forEach((el) => {
+      let next = el.nextElementSibling;
+      while (next) {
+        if (window.__locatorEngines.matchesSelector(next, selector)) {
+          nextElements.push(next);
+        }
+        next = next.nextElementSibling;
+      }
+    });
+    return [...new Set(nextElements)];
+  }
+
+  if (trimmed.startsWith(">")) {
+    const selector = trimmed.substring(1).trim();
+    const childrenElements = [];
+    elements.forEach((el) => {
+      const children = Array.from(el.children);
+      children.forEach((child) => {
+        if (window.__locatorEngines.matchesSelector(child, selector)) {
+          childrenElements.push(child);
+        }
+      });
+    });
+    return [...new Set(childrenElements)];
+  }
+
+  if (afterSelector.match(/^\s/)) {
+    const descendantElements = [];
+    elements.forEach((el) => {
+      const matches = window.__locatorEngines.findBySmartLocator(trimmed, el);
+      if (matches && Array.isArray(matches)) {
+        descendantElements.push(...matches);
+      }
+    });
+    return [...new Set(descendantElements)];
+  }
+
+  return elements.filter((el) =>
+    window.__locatorEngines.matchesSelector(el, trimmed)
+  );
+};
+
+window.__locatorEngines.matchesSelector = function (el, selector) {
+  if (!el || !selector) return false;
+  try {
+    if (el.matches(selector)) return true;
+  } catch { }
+
+  try {
+    const parent = el.parentElement || el.getRootNode();
+    if (!parent || !parent.querySelectorAll) return false;
+    const matches = window.__locatorEngines.findBySmartLocator(selector, parent);
+    return Array.isArray(matches) && matches.includes(el);
+  } catch {
+    return false;
+  }
+};
+
 window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
   locator,
   context
@@ -302,13 +384,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       });
 
       if (afterSelector && afterSelector.trim()) {
-        elements = elements.filter((el) => {
-          try {
-            return el.matches(afterSelector.trim());
-          } catch {
-            return false;
-          }
-        });
+        elements = window.__locatorEngines.processAfterSelector(
+          elements,
+          afterSelector
+        );
       }
     } else if (locator.includes(":text-is(")) {
       const textIsMatch = locator.match(/:text-is\((['"])([^'"]+)\1\)/);
@@ -333,25 +412,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterTextIs && afterTextIs.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              const parent = el.parentElement || searchRoot;
-              const matched = window.__locatorEngines.findBySmartLocator(
-                afterTextIs.trim(),
-                parent
-              );
-              if (matched && !matched.error) {
-                return matched.includes(el);
-              }
-              return el.matches(afterTextIs.trim());
-            } catch {
-              try {
-                return el.matches(afterTextIs.trim());
-              } catch {
-                return false;
-              }
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterTextIs
+          );
         }
       }
     } else if (locator.includes(":has-text(")) {
@@ -378,13 +442,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       }
     } else if (locator.includes(":visible")) {
@@ -412,13 +473,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       }
     } else if (locator.includes(":contains(")) {
@@ -445,13 +503,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       }
     } else if (locator.includes(":nth-match(")) {
@@ -473,10 +528,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           const fullSelector = beforeNthMatch + selector + afterNthMatch;
           baseElements = beforeNthMatch
             ? Array.from(
-                searchRoot.querySelectorAll(
-                  beforeNthMatch + selector + afterNthMatch
-                )
+              searchRoot.querySelectorAll(
+                beforeNthMatch + selector + afterNthMatch
               )
+            )
             : Array.from(searchRoot.querySelectorAll(selector + afterNthMatch));
         } catch (error) {
           throw new Error(`Invalid selector in :nth-match: ${error.message}`);
@@ -518,13 +573,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
@@ -547,13 +599,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
@@ -575,13 +624,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
@@ -707,13 +753,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
@@ -733,13 +776,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
@@ -763,13 +803,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
@@ -789,13 +826,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
@@ -815,13 +849,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       } catch (error) {
         throw new Error(`Invalid selector: ${error.message}`);
@@ -887,13 +918,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         });
 
         if (afterSelector && afterSelector.trim()) {
-          elements = elements.filter((el) => {
-            try {
-              return el.matches(afterSelector.trim());
-            } catch {
-              return false;
-            }
-          });
+          elements = window.__locatorEngines.processAfterSelector(
+            elements,
+            afterSelector
+          );
         }
       } catch (err) {
         throw new Error(`Invalid :not selector: ${err.message}`);
