@@ -62,7 +62,7 @@ window.__locatorInspect = function (locator, type, requestId) {
     const createOverlays = requestId === undefined || lastId === requestId;
 
     let elements = [];
-    let details = "";
+    let _details = "";
 
     switch (type) {
       case "css": {
@@ -223,41 +223,91 @@ window.__locatorInspect = function (locator, type, requestId) {
       }, 5000);
     }
 
-    if (elements.length > 0) {
-      details = elements
-        .slice(0, 5)
-        .map((el, idx) => {
-          const tagName = el.tagName ? el.tagName.toLowerCase() : "";
-          const className = el.className
-            ? ` class=\"${el.className.split(" ").slice(0, 2).join(" ")}\"`
-            : "";
-          const id = el.id ? ` id=\"${el.id}\"` : "";
-          const text = el.textContent
-            ? el.textContent.trim().substring(0, 40)
-            : "";
-          const attributes = [];
-          ["type", "name", "value", "href", "src"].forEach((attr) => {
-            if (el.hasAttribute && el.hasAttribute(attr)) {
-              const value = el.getAttribute(attr).substring(0, 30);
-              attributes.push(`${attr}=\"${value}\"`);
-            }
-          });
+    const limit = 100;
+    const elementsInfo = elements.slice(0, limit).map((el) => {
+      const tagName = el.tagName ? el.tagName.toLowerCase() : "";
+      const className = el.className ? el.className : "";
+      const id = el.id ? el.id : "";
 
-          let result = `${idx + 1}. <${tagName}${id}${className}`;
-          if (attributes.length > 0)
-            result += ` ${attributes.slice(0, 2).join(" ")}`;
-          result += ">";
-          if (text && text !== el.innerHTML.trim())
-            result += `\n   Text: \"${text}${text.length >= 40 ? "..." : ""}\"`;
-          return result;
-        })
-        .join("\n\n");
+      let text = el.textContent ? el.textContent.trim() : "";
+      if (text.length > 60) text = text.substring(0, 60) + "...";
 
-      if (elements.length > 5)
-        details += `\n\n... and ${elements.length - 5} more elements`;
-    }
+      const attributes = {};
+      const importantAttrs = [
+        "name", "type", "href", "src", "role", "aria-label",
+        "data-testid", "data-test", "placeholder", "title", "alt"
+      ];
 
-    return { count: elements.length, details, error: null };
+      if (el.hasAttributes()) {
+        for (let i = 0; i < el.attributes.length; i++) {
+          const attr = el.attributes[i];
+          if (importantAttrs.includes(attr.name) || attr.name.startsWith("data-")) {
+            let val = attr.value;
+            if (val.length > 50) val = val.substring(0, 50) + "...";
+            attributes[attr.name] = val;
+          }
+        }
+      }
+
+      return {
+        tagName,
+        id,
+        className,
+        text,
+        attributes
+      };
+    });
+
+
+    // Expose highlight function
+    window.__locatorHighlight = function (index) {
+      if (!highlightData) return;
+
+      let container = document.getElementById("locator-inspector-overlay-container");
+      if (!container && overlayContainer) {
+        // Revive container if it was removed
+        document.body.appendChild(overlayContainer);
+        container = overlayContainer;
+
+        // Re-append all highlights to the invoked container
+        highlightData.forEach(d => {
+          if (d.highlight) container.appendChild(d.highlight);
+        });
+
+        // Re-attach scroll listener since it was cleaned up
+        window.removeEventListener("scroll", scrollHandler); // Prevent duplicates
+        window.addEventListener("scroll", scrollHandler, { passive: true });
+
+        container._cleanup = () => {
+          window.removeEventListener("scroll", scrollHandler);
+          if (scrollTimeout) cancelAnimationFrame(scrollTimeout);
+        };
+      }
+
+      highlightData.forEach((data) => {
+        if (data.index === index) {
+          data.highlight.style.opacity = "1";
+          data.highlight.style.borderWidth = "5px";
+          data.highlight.style.zIndex = "2147483647";
+          if (data.element && data.element.scrollIntoView) {
+            data.element.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+              inline: "center"
+            });
+          }
+        } else {
+          data.highlight.style.opacity = "0.1";
+          data.highlight.style.borderWidth = "3px";
+          data.highlight.style.zIndex = "2147483646";
+        }
+      });
+
+      // Force update positions to ensure they are correct immediately and during scroll
+      updateHighlightPositions();
+    };
+
+    return { count: elements.length, elementsInfo, error: null };
   } catch (error) {
     return {
       count: 0,
