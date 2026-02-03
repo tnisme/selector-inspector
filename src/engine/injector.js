@@ -65,29 +65,33 @@ window.__locatorInspect = function (locator, type, requestId) {
     let details = "";
 
     switch (type) {
-      case "css":
+      case "css": {
         const css = findByCss(locator);
         if (css && css.error) return { error: css.error };
         css.forEach((el) => elements.push(el));
         break;
+      }
 
-      case "xpath":
+      case "xpath": {
         const xpath = findByXPath(locator);
         if (xpath && xpath.error) return { error: xpath.error };
         xpath.forEach((el) => elements.push(el));
         break;
+      }
 
-      case "playwright":
+      case "playwright": {
         const pw = findByPlaywright(locator);
         if (pw && pw.error) return { error: pw.error };
         pw.forEach((el) => elements.push(el));
         break;
+      }
 
-      case "smart":
+      case "smart": {
         const smart = findBySmartLocator(locator);
         if (smart && smart.error) return { error: smart.error };
         smart.forEach((el) => elements.push(el));
         break;
+      }
 
       default:
         return { error: "Unknown locator type" };

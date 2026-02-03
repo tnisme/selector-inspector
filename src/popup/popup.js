@@ -1,23 +1,12 @@
 import {
   initPopupState,
-  nextRequestId,
-  getCurrentRequestId,
-  saveLocatorType,
-  saveLocatorValue,
-  updatePlaceholder,
 } from "./popup.state.js";
 import {
   initPopupUI,
-  showResult,
-  showLoading,
-  hideResult,
   setUIGlobals,
 } from "./popup.ui.js";
 import {
   initPopupInspection,
-  debounceInspection,
-  triggerInspection,
-  clearPageOverlays,
   setInjectionGlobals,
 } from "./popup.inject.js";
 

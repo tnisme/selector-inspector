@@ -1,4 +1,4 @@
-function buildInspectResult(elements) {
+export function buildInspectResult(elements) {
   let details = "";
 
   if (elements.length > 0) {

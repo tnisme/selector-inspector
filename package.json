@@ -1,5 +1,10 @@
 {
   "scripts": {
-    "build": "node scripts/build.js"
+    "build": "node scripts/build.js",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "eslint": "^9.39.2",
+    "globals": "^17.3.0"
   }
 }
