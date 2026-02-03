@@ -1,4 +1,4 @@
-function renderOverlays(elements) {
+export function renderOverlays(elements) {
   if (!elements || elements.length === 0) return;
 
   const overlayContainer = document.createElement("div");

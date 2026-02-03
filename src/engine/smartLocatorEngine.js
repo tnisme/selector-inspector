@@ -134,7 +134,9 @@ window.__locatorEngines.matchesSelector = function (el, selector) {
   if (!el || !selector) return false;
   try {
     if (el.matches(selector)) return true;
-  } catch { }
+  } catch {
+    // ignore error
+  }
 
   try {
     const parent = el.parentElement || el.getRootNode();
@@ -215,7 +217,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         }
 
         const finalElements = [];
-        baseElements.forEach((baseEl, idx) => {
+        baseElements.forEach((baseEl, _idx) => {
           try {
             // Execute the after locator (supports any type)
             let matched;
@@ -224,14 +226,14 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
                 afterOperator,
                 baseEl
               );
-            } catch (err) {
+            } catch (_err) {
               // If executeLocator throws for individual elements, skip it
               return;
             }
             if (matched && !matched.error && Array.isArray(matched)) {
               finalElements.push(...matched);
             }
-          } catch (err) {
+          } catch (_err) {
             // Skip errors for individual elements
           }
         });
@@ -320,7 +322,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         baseElements = baseSelector
           ? Array.from(searchRoot.querySelectorAll(baseSelector))
           : Array.from(searchRoot.querySelectorAll("*"));
-      } catch (error) {
+      } catch (_error) {
         throw new Error(`Invalid base selector: ${baseSelector}`);
       }
 
@@ -374,10 +376,10 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
             }
             return matched && matched.length > 0;
           }
-        } catch (error) {
+        } catch (_error) {
           try {
             return el.querySelector(hasContent) !== null;
-          } catch (err) {
+          } catch (_err) {
             return false;
           }
         }
@@ -402,7 +404,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         let baseElements;
         try {
           baseElements = Array.from(searchRoot.querySelectorAll(baseSelector));
-        } catch (error) {
+        } catch (_error) {
           throw new Error(`Invalid base selector: ${baseSelector}`);
         }
 
@@ -432,7 +434,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           baseElements = baseSelector
             ? Array.from(searchRoot.querySelectorAll(baseSelector))
             : Array.from(searchRoot.querySelectorAll("*"));
-        } catch (error) {
+        } catch (_error) {
           throw new Error(`Invalid base selector: ${baseSelector}`);
         }
 
@@ -457,7 +459,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           baseElements = baseSelector
             ? Array.from(searchRoot.querySelectorAll(baseSelector))
             : Array.from(searchRoot.querySelectorAll("*"));
-        } catch (error) {
+        } catch (_error) {
           throw new Error(`Invalid base selector: ${baseSelector}`);
         }
 
@@ -493,7 +495,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           baseElements = baseSelector
             ? Array.from(searchRoot.querySelectorAll(baseSelector))
             : Array.from(searchRoot.querySelectorAll("*"));
-        } catch (error) {
+        } catch (_error) {
           throw new Error(`Invalid base selector: ${baseSelector}`);
         }
 
@@ -525,7 +527,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
 
         let baseElements;
         try {
-          const fullSelector = beforeNthMatch + selector + afterNthMatch;
+          const _fullSelector = beforeNthMatch + selector + afterNthMatch;
           baseElements = beforeNthMatch
             ? Array.from(
               searchRoot.querySelectorAll(
@@ -877,7 +879,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       }
 
       const notSelector = locator.substring(notIndex + 5, notEndIndex);
-      const parts = locator.split(/:not\([^)]+\)/);
+      const _parts = locator.split(/:not\([^)]+\)/);
       const beforeNot = locator.substring(0, notIndex);
       const afterNot = locator.substring(notEndIndex + 1);
 
@@ -887,7 +889,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       try {
         try {
           return Array.from(searchRoot.querySelectorAll(locator));
-        } catch (nativeError) {
+        } catch (_nativeError) {
           // Native failed, use custom logic
         }
 
@@ -908,7 +910,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
             const elementMatches =
               matched && matched.length > 0 && matched.includes(el);
             return !elementMatches;
-          } catch (err) {
+          } catch (_err) {
             try {
               return !el.matches(notSelector);
             } catch {
@@ -929,7 +931,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
     } else if (locator.includes(":is(") || locator.includes(":where(")) {
       try {
         return Array.from(searchRoot.querySelectorAll(locator));
-      } catch (error) {
+      } catch (_error) {
         const isWhereMatch = locator.match(/:(is|where)\(([^)]+)\)/);
         if (isWhereMatch) {
           const selectors = isWhereMatch[2].split(",").map((s) => s.trim());
@@ -945,7 +947,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
                 searchRoot.querySelectorAll(fullSelector)
               );
               elements.push(...matched);
-            } catch (err) {
+            } catch (_err) {
               // Skip invalid selector
             }
           });
