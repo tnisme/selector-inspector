@@ -9,6 +9,9 @@ import {
   initPopupInspection,
   setInjectionGlobals,
 } from "./popup.inject.js";
+import {
+  initContextUI,
+} from "./popup.context.js";
 
 let typeSelect, locatorInput;
 
@@ -28,6 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   initPopupUI();
   initPopupInspection();
+  initContextUI(); // NEW: Initialize context management
 });
 
 // Notify background when panel is closing
