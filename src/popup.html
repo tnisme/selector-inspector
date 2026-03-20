@@ -399,6 +399,30 @@
         </div>
 
         <div class="form-group">
+          <label for="context">DOM Context</label>
+          <div style="display: flex; gap: 8px;">
+            <select id="context"
+              style="flex: 1; min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+              <option value="frame-0">Top Document</option>
+            </select>
+            <button id="refreshContexts" style="width: auto; padding: 12px 16px; font-size: 12px;">
+              ↻ Refresh
+            </button>
+          </div>
+        </div>
+
+        <div id="activeContext" style="
+          padding: 8px 12px;
+          background: var(--primary-dark);
+          border: 1px solid var(--secondary);
+          border-radius: 4px;
+          font-size: 12px;
+          margin-bottom: 12px;
+        ">
+          <strong>Current Context:</strong> <span id="activeContextLabel">Top Document</span>
+        </div>
+
+        <div class="form-group">
           <label for="locator">Locator Expression</label>
           <textarea id="locator" placeholder="Enter your locator here..."></textarea>
         </div>

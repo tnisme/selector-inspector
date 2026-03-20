@@ -41,16 +41,18 @@ async function injectContentScript(tabId) {
   try {
     const results = await chrome.scripting
       .executeScript({
-        target: { tabId },
+        target: { tabId, allFrames: true },
         func: () => typeof window.__locatorInspect,
         world: "MAIN",
       })
       .catch(() => null);
 
-    if (results?.[0]?.result !== "function") {
+    const needsInjection = !results || results.some((r) => r.result !== "function");
+
+    if (needsInjection) {
       try {
         await chrome.scripting.executeScript({
-          target: { tabId },
+          target: { tabId, allFrames: true },
           files: [
             "engine/cssEngine.js",
             "engine/xpathEngine.js",
@@ -65,7 +67,7 @@ async function injectContentScript(tabId) {
 
         const verifyResults = await chrome.scripting
           .executeScript({
-            target: { tabId },
+            target: { tabId, allFrames: true },
             func: () => {
               return {
                 hasInspect: typeof window.__locatorInspect === "function",
@@ -91,7 +93,7 @@ async function injectContentScript(tabId) {
 
         await chrome.scripting
           .executeScript({
-            target: { tabId },
+            target: { tabId, allFrames: true },
             func: () => {
               if (window.__locatorInspect) {
                 window.__locatorInspect.__active = true;
@@ -106,7 +108,7 @@ async function injectContentScript(tabId) {
     } else {
       await chrome.scripting
         .executeScript({
-          target: { tabId },
+          target: { tabId, allFrames: true },
           func: () => {
             if (window.__locatorInspect) {
               window.__locatorInspect.__active = true;
@@ -124,7 +126,7 @@ async function injectContentScript(tabId) {
 async function cleanupTab(tabId) {
   try {
     await chrome.scripting.executeScript({
-      target: { tabId },
+      target: { tabId, allFrames: true },
       func: () => {
         const container = document.getElementById(
           "locator-inspector-overlay-container"

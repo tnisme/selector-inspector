@@ -121,6 +121,11 @@ window.__locatorInspect = function (locator, type, requestId) {
       document.body.appendChild(overlayContainer);
     }
 
+    // Helper function to calculate position relative to viewport
+    function getAbsoluteElementRect(element) {
+      return element.getBoundingClientRect();
+    }
+
     elements.forEach((element, index) => {
       if (!element) return;
 
@@ -177,7 +182,7 @@ window.__locatorInspect = function (locator, type, requestId) {
           data.highlight &&
           document.body.contains(data.element)
         ) {
-          const rect = data.element.getBoundingClientRect();
+          const rect = getAbsoluteElementRect(data.element);
           data.highlight.style.top = rect.top + "px";
           data.highlight.style.left = rect.left + "px";
           data.highlight.style.width = rect.width + "px";
