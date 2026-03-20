@@ -8,8 +8,16 @@
     "48": "icons/48.png",
     "128": "icons/128.png"
   },
-  "permissions": ["scripting", "activeTab", "storage", "sidePanel"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": [
+    "scripting",
+    "activeTab",
+    "storage",
+    "sidePanel",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "action": {
     "default_title": "Open Locator Inspector",
     "default_icon": {

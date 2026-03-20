@@ -1,25 +1,17 @@
 import {
   initPopupState,
-  nextRequestId,
-  getCurrentRequestId,
-  saveLocatorType,
-  saveLocatorValue,
-  updatePlaceholder,
 } from "./popup.state.js";
 import {
   initPopupUI,
-  showResult,
-  showLoading,
-  hideResult,
   setUIGlobals,
 } from "./popup.ui.js";
 import {
   initPopupInspection,
-  debounceInspection,
-  triggerInspection,
-  clearPageOverlays,
   setInjectionGlobals,
 } from "./popup.inject.js";
+import {
+  initContextUI,
+} from "./popup.context.js";
 
 let typeSelect, locatorInput;
 
@@ -39,6 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   initPopupUI();
   initPopupInspection();
+  initContextUI(); // NEW: Initialize context management
 });
 
 // Notify background when panel is closing

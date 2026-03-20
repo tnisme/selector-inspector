@@ -30,7 +30,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   activeTabs.delete(tabId);
 });
 
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, _tab) => {
   if (changeInfo.status === "loading" && activeTabs.has(tabId)) {
     await cleanupTab(tabId);
     activeTabs.delete(tabId);
@@ -41,16 +41,18 @@ async function injectContentScript(tabId) {
   try {
     const results = await chrome.scripting
       .executeScript({
-        target: { tabId },
+        target: { tabId, allFrames: true },
         func: () => typeof window.__locatorInspect,
         world: "MAIN",
       })
       .catch(() => null);
 
-    if (results?.[0]?.result !== "function") {
+    const needsInjection = !results || results.some((r) => r.result !== "function");
+
+    if (needsInjection) {
       try {
         await chrome.scripting.executeScript({
-          target: { tabId },
+          target: { tabId, allFrames: true },
           files: [
             "engine/cssEngine.js",
             "engine/xpathEngine.js",
@@ -65,7 +67,7 @@ async function injectContentScript(tabId) {
 
         const verifyResults = await chrome.scripting
           .executeScript({
-            target: { tabId },
+            target: { tabId, allFrames: true },
             func: () => {
               return {
                 hasInspect: typeof window.__locatorInspect === "function",
@@ -91,7 +93,7 @@ async function injectContentScript(tabId) {
 
         await chrome.scripting
           .executeScript({
-            target: { tabId },
+            target: { tabId, allFrames: true },
             func: () => {
               if (window.__locatorInspect) {
                 window.__locatorInspect.__active = true;
@@ -99,14 +101,14 @@ async function injectContentScript(tabId) {
             },
             world: "MAIN",
           })
-          .catch(() => {});
+          .catch(() => { });
       } catch (error) {
         console.error("Error injecting content scripts:", error);
       }
     } else {
       await chrome.scripting
         .executeScript({
-          target: { tabId },
+          target: { tabId, allFrames: true },
           func: () => {
             if (window.__locatorInspect) {
               window.__locatorInspect.__active = true;
@@ -114,7 +116,7 @@ async function injectContentScript(tabId) {
           },
           world: "MAIN",
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   } catch (error) {
     console.log("Content script injection skipped:", error.message);
@@ -124,7 +126,7 @@ async function injectContentScript(tabId) {
 async function cleanupTab(tabId) {
   try {
     await chrome.scripting.executeScript({
-      target: { tabId },
+      target: { tabId, allFrames: true },
       func: () => {
         const container = document.getElementById(
           "locator-inspector-overlay-container"
@@ -142,7 +144,7 @@ async function cleanupTab(tabId) {
       },
       world: "MAIN",
     });
-  } catch (error) {
+  } catch (_error) {
     // Tab might be closed or inaccessible, ignore error
     // This is expected when tab is closed or navigated away
   }

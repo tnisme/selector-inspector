@@ -10,8 +10,8 @@ Locator Inspector lets you:
 - Test **XPath expressions** (1.0 standard) with error reporting
 - Test **Playwright-style locators** (`getByRole()`, `getByText()`, `getByTestId()`) via browser emulation
 - Test **smart locator chains** (`selector >> descendant >> ...`) as a developer convenience
+- **Inspect inside iframes** seamlessly using the explicit DOM Context dropdown (supports both same-origin 🟢 and cross-origin 🔴)
 - See matches highlighted on the page with numbered badges
-- Save your last locator and selected type automatically
 
 **Intended use**: Rapid validation of selectors during test development. Not a replacement for running actual test code.
 
@@ -51,11 +51,10 @@ npm run build
 
 1. Click the extension icon → side panel opens
 2. Select locator type: **CSS**, **XPath**, **Playwright**, or **Smart**
-3. Enter your locator expression
-4. Matched elements highlight on the page with numbered badges
-5. Adjust and test until you have the right selector
-
-**Keyboard shortcut**: `Ctrl + Enter` (Windows/Linux) or `Cmd + Enter` (macOS) to inspect without debounce.
+3. Select your target **DOM Context** (Target the Top Document or choose a specific iframe)
+4. Enter your locator expression and press **Enter** to inspect
+5. Matched elements highlight on the page with numbered badges
+6. Adjust and test until you have the right selector
 
 ---
 
@@ -148,6 +147,7 @@ Page context (MAIN world isolation)
 - [x] XPath 1.0 expressions
 - [x] Basic Playwright locator emulation (3 types)
 - [x] Simple smart locator chains (`>>` operator)
+- [x] Execute locators inside same-origin and cross-origin iframes
 - [x] Live visual feedback on matches
 - [x] Persistence of last locator/type
 - [x] Light/dark theme toggle
@@ -155,7 +155,6 @@ Page context (MAIN world isolation)
 ### What We Do NOT Support
 
 - [ ] Shadow DOM piercing (`.shadowRoot` traversal)
-- [ ] Cross-origin iframes (browser security blocks this)
 - [ ] Playwright's full locator API (many locators not emulated)
 - [ ] XPath/CSS context awareness within chains
 - [ ] Recording actions or generating test code
@@ -205,7 +204,6 @@ Prevents overlays from accumulating if user forgets them. **Trade-off**: Cannot 
 | Issue                          | Reason                                                  | Impact                                         |
 | ------------------------------ | ------------------------------------------------------- | ---------------------------------------------- |
 | Shadow DOM not supported       | Requires `.shadowRoot` traversal; not implemented       | Cannot inspect web components                  |
-| Cross-origin iframes blocked   | Browser security; content script injection fails        | Only inspect same-origin frames                |
 | Dynamic DOM not re-highlighted | No mutation observer; highlights only on manual trigger | Manual re-trigger needed for AJAX updates      |
 | Large DOMs may freeze UI       | No optimization for 100K+ element pages                 | Try limiting selector scope (tag, class, etc.) |
 
@@ -350,7 +348,7 @@ Recommended: Suggest the maintainer add MIT, Apache 2.0, or GPL 3.0 before accep
 
 ### Q: Does this work on `<iframe>` or `<shadow-root>`?
 
-**A**: Same-origin `<iframe>` may work (untested). Shadow DOM is not supported.
+**A**: Yes! Full support is available for both same-origin and cross-origin iframes via the explicit "DOM Context" dropdown. Shadow DOM is currently not supported.
 
 ### Q: My selector works here but not in Playwright. Why?
 

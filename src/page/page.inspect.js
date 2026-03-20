@@ -1,4 +1,4 @@
-function inspectLocator(locator, type) {
+export function inspectLocator(locator, type) {
   clearOverlays();
 
   let elements = [];
