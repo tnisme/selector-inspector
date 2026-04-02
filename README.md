@@ -11,6 +11,7 @@ Locator Inspector lets you:
 - Test **Playwright-style locators** (`getByRole()`, `getByText()`, `getByTestId()`) via browser emulation
 - Test **smart locator chains** (`selector >> descendant >> ...`) as a developer convenience
 - **Inspect inside iframes** seamlessly using the explicit DOM Context dropdown (supports both same-origin 🟢 and cross-origin 🔴)
+- **Deep search into Shadow DOM** seamlessly across CSS, Playwright, and Smart Locators
 - See matches highlighted on the page with numbered badges
 
 **Intended use**: Rapid validation of selectors during test development. Not a replacement for running actual test code.
@@ -148,13 +149,13 @@ Page context (MAIN world isolation)
 - [x] Basic Playwright locator emulation (3 types)
 - [x] Simple smart locator chains (`>>` operator)
 - [x] Execute locators inside same-origin and cross-origin iframes
+- [x] Shadow DOM piercing (`.shadowRoot` traversal)
 - [x] Live visual feedback on matches
 - [x] Persistence of last locator/type
 - [x] Light/dark theme toggle
 
 ### What We Do NOT Support
 
-- [ ] Shadow DOM piercing (`.shadowRoot` traversal)
 - [ ] Playwright's full locator API (many locators not emulated)
 - [ ] XPath/CSS context awareness within chains
 - [ ] Recording actions or generating test code
@@ -203,7 +204,6 @@ Prevents overlays from accumulating if user forgets them. **Trade-off**: Cannot 
 
 | Issue                          | Reason                                                  | Impact                                         |
 | ------------------------------ | ------------------------------------------------------- | ---------------------------------------------- |
-| Shadow DOM not supported       | Requires `.shadowRoot` traversal; not implemented       | Cannot inspect web components                  |
 | Dynamic DOM not re-highlighted | No mutation observer; highlights only on manual trigger | Manual re-trigger needed for AJAX updates      |
 | Large DOMs may freeze UI       | No optimization for 100K+ element pages                 | Try limiting selector scope (tag, class, etc.) |
 
@@ -348,7 +348,7 @@ Recommended: Suggest the maintainer add MIT, Apache 2.0, or GPL 3.0 before accep
 
 ### Q: Does this work on `<iframe>` or `<shadow-root>`?
 
-**A**: Yes! Full support is available for both same-origin and cross-origin iframes via the explicit "DOM Context" dropdown. Shadow DOM is currently not supported.
+**A**: Yes! Full support is available for both same-origin and cross-origin iframes via the explicit "DOM Context" dropdown. Shadow DOM inspection is fully supported natively using recursive `.shadowRoot` traversal across all locator engines.
 
 ### Q: My selector works here but not in Playwright. Why?
 

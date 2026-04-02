@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.3] - 2026-04-02
+
+### Added
+- **Shadow DOM Inspection**: Native support for inspecting elements within open Shadow DOM boundaries across all locator engines (CSS, Playwright, and Smart Locator). Elements hidden in heavily nested web components can now be targeted seamlessly with selectors like `rect[fill='orange']`.
+
 ## [0.1.2] - 2026-03-20
 
 ### Added
