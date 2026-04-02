@@ -11,21 +11,19 @@ window.__locatorEngines.findByPlaywright = function findByPlaywright(
     const roleMatch = selector.match(/getByRole\(['\"]([^'\"]+)['\"]\)/);
     if (roleMatch) {
       const role = roleMatch[1];
-      elements = Array.from(searchRoot.querySelectorAll(`[role="${role}"]`));
+      elements = window.__locatorEngines.querySelectorAllDeep(`[role="${role}"]`, searchRoot);
       if (role === "button") {
         elements.push(
-          ...Array.from(
-            searchRoot.querySelectorAll(
-              'button, input[type="button"], input[type="submit"]'
-            )
+          ...window.__locatorEngines.querySelectorAllDeep(
+            'button, input[type="button"], input[type="submit"]',
+            searchRoot
           )
         );
       } else if (role === "textbox") {
         elements.push(
-          ...Array.from(
-            searchRoot.querySelectorAll(
-              'input[type="text"], input[type="email"], input[type="password"], textarea'
-            )
+          ...window.__locatorEngines.querySelectorAllDeep(
+            'input[type="text"], input[type="email"], input[type="password"], textarea',
+            searchRoot
           )
         );
       }
@@ -34,7 +32,8 @@ window.__locatorEngines.findByPlaywright = function findByPlaywright(
     const textMatch = selector.match(/getByText\(['\"]([^'\"]+)['\"]\)/);
     if (textMatch) {
       const text = textMatch[1];
-      elements = Array.from(searchRoot.querySelectorAll("*")).filter((el) => {
+      const allElements = window.__locatorEngines.querySelectorAllDeep("*", searchRoot);
+      elements = allElements.filter((el) => {
         const textContent = el.textContent && el.textContent.trim();
         const hasChildren =
           el.children.length === 0 ||
@@ -49,10 +48,9 @@ window.__locatorEngines.findByPlaywright = function findByPlaywright(
     const testIdMatch = selector.match(/getByTestId\(['\"]([^'\"]+)['\"]\)/);
     if (testIdMatch) {
       const testId = testIdMatch[1];
-      elements = Array.from(
-        searchRoot.querySelectorAll(
-          `[data-testid="${testId}"], [data-test-id="${testId}"], [data-cy="${testId}"]`
-        )
+      elements = window.__locatorEngines.querySelectorAllDeep(
+        `[data-testid="${testId}"], [data-test-id="${testId}"], [data-cy="${testId}"]`,
+        searchRoot
       );
     }
   } else {

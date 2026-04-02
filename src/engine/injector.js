@@ -180,7 +180,7 @@ window.__locatorInspect = function (locator, type, requestId) {
         if (
           data.element &&
           data.highlight &&
-          document.body.contains(data.element)
+          data.element.isConnected
         ) {
           const rect = getAbsoluteElementRect(data.element);
           data.highlight.style.top = rect.top + "px";
@@ -231,7 +231,7 @@ window.__locatorInspect = function (locator, type, requestId) {
     const limit = 100;
     const elementsInfo = elements.slice(0, limit).map((el) => {
       const tagName = el.tagName ? el.tagName.toLowerCase() : "";
-      const className = el.className ? el.className : "";
+      const className = typeof el.className === "string" ? el.className : (el.getAttribute && el.getAttribute("class")) || "";
       const id = el.id ? el.id : "";
 
       let text = el.textContent ? el.textContent.trim() : "";
