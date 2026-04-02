@@ -102,7 +102,8 @@ function showResult(data, type) {
 
       const classSpan = document.createElement("span");
       classSpan.style.color = "#008080"; // teal for class
-      if (el.className) classSpan.textContent = `.${el.className.split(" ").join(".")}`;
+      let classStr = typeof el.className === "string" ? el.className : "";
+      if (classStr) classSpan.textContent = `.${classStr.split(" ").join(".")}`;
 
       item.appendChild(document.createTextNode(`${index + 1}. <`));
       item.appendChild(tagSpan);

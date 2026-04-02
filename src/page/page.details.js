@@ -6,8 +6,9 @@ export function buildInspectResult(elements) {
       .slice(0, 5)
       .map((el, index) => {
         const tagName = el.tagName.toLowerCase();
-        const className = el.className
-          ? ` class="${el.className.split(" ").slice(0, 2).join(" ")}"`
+        let classStr = typeof el.className === "string" ? el.className : (el.getAttribute && el.getAttribute("class")) || "";
+        const className = classStr
+          ? ` class="${classStr.split(" ").slice(0, 2).join(" ")}"`
           : "";
         const id = el.id ? ` id="${el.id}"` : "";
         const text = el.textContent

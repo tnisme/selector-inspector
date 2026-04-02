@@ -285,7 +285,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
 
     if (!hasCustomPseudo) {
       try {
-        return Array.from(searchRoot.querySelectorAll(locator));
+        return Array.from(window.__locatorEngines.querySelectorAllDeep(locator, searchRoot));
       } catch (error) {
         throw new Error(
           `Invalid CSS selector: ${locator}. Error: ${error.message}`
@@ -320,8 +320,8 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       let baseElements;
       try {
         baseElements = baseSelector
-          ? Array.from(searchRoot.querySelectorAll(baseSelector))
-          : Array.from(searchRoot.querySelectorAll("*"));
+          ? Array.from(window.__locatorEngines.querySelectorAllDeep(baseSelector, searchRoot))
+          : Array.from(window.__locatorEngines.querySelectorAllDeep("*", searchRoot));
       } catch (_error) {
         throw new Error(`Invalid base selector: ${baseSelector}`);
       }
@@ -403,7 +403,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         const baseSelector = beforeTextIs || "*";
         let baseElements;
         try {
-          baseElements = Array.from(searchRoot.querySelectorAll(baseSelector));
+          baseElements = Array.from(window.__locatorEngines.querySelectorAllDeep(baseSelector, searchRoot));
         } catch (_error) {
           throw new Error(`Invalid base selector: ${baseSelector}`);
         }
@@ -432,8 +432,8 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         let baseElements;
         try {
           baseElements = baseSelector
-            ? Array.from(searchRoot.querySelectorAll(baseSelector))
-            : Array.from(searchRoot.querySelectorAll("*"));
+            ? Array.from(window.__locatorEngines.querySelectorAllDeep(baseSelector, searchRoot))
+            : Array.from(window.__locatorEngines.querySelectorAllDeep("*", searchRoot));
         } catch (_error) {
           throw new Error(`Invalid base selector: ${baseSelector}`);
         }
@@ -457,8 +457,8 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         let baseElements;
         try {
           baseElements = baseSelector
-            ? Array.from(searchRoot.querySelectorAll(baseSelector))
-            : Array.from(searchRoot.querySelectorAll("*"));
+            ? Array.from(window.__locatorEngines.querySelectorAllDeep(baseSelector, searchRoot))
+            : Array.from(window.__locatorEngines.querySelectorAllDeep("*", searchRoot));
         } catch (_error) {
           throw new Error(`Invalid base selector: ${baseSelector}`);
         }
@@ -493,8 +493,8 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
         let baseElements;
         try {
           baseElements = baseSelector
-            ? Array.from(searchRoot.querySelectorAll(baseSelector))
-            : Array.from(searchRoot.querySelectorAll("*"));
+            ? Array.from(window.__locatorEngines.querySelectorAllDeep(baseSelector, searchRoot))
+            : Array.from(window.__locatorEngines.querySelectorAllDeep("*", searchRoot));
         } catch (_error) {
           throw new Error(`Invalid base selector: ${baseSelector}`);
         }
@@ -530,11 +530,11 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
           const _fullSelector = beforeNthMatch + selector + afterNthMatch;
           baseElements = beforeNthMatch
             ? Array.from(
-              searchRoot.querySelectorAll(
+              window.__locatorEngines.querySelectorAllDeep(
                 beforeNthMatch + selector + afterNthMatch
-              )
+              , searchRoot)
             )
-            : Array.from(searchRoot.querySelectorAll(selector + afterNthMatch));
+            : Array.from(window.__locatorEngines.querySelectorAllDeep(selector + afterNthMatch, searchRoot));
         } catch (error) {
           throw new Error(`Invalid selector in :nth-match: ${error.message}`);
         }
@@ -564,8 +564,8 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
 
       try {
         const allElements = baseSelector
-          ? Array.from(document.querySelectorAll(baseSelector))
-          : Array.from(document.querySelectorAll("*"));
+          ? Array.from(window.__locatorEngines.querySelectorAllDeep(baseSelector, document))
+          : Array.from(window.__locatorEngines.querySelectorAllDeep("*", document));
 
         elements = allElements.filter((el) => {
           const parent = el.parentElement;
@@ -590,8 +590,8 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
 
       try {
         const allElements = baseSelector
-          ? Array.from(document.querySelectorAll(baseSelector))
-          : Array.from(document.querySelectorAll("*"));
+          ? Array.from(window.__locatorEngines.querySelectorAllDeep(baseSelector, document))
+          : Array.from(window.__locatorEngines.querySelectorAllDeep("*", document));
 
         elements = allElements.filter((el) => {
           const parent = el.parentElement;
@@ -616,8 +616,8 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
 
       try {
         const allElements = baseSelector
-          ? Array.from(document.querySelectorAll(baseSelector))
-          : Array.from(document.querySelectorAll("*"));
+          ? Array.from(window.__locatorEngines.querySelectorAllDeep(baseSelector, document))
+          : Array.from(window.__locatorEngines.querySelectorAllDeep("*", document));
 
         elements = allElements.filter((el) => {
           const parent = el.parentElement;
@@ -644,8 +644,8 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
 
         try {
           const allElements = baseSelector
-            ? Array.from(searchRoot.querySelectorAll(baseSelector))
-            : Array.from(searchRoot.querySelectorAll("*"));
+            ? Array.from(window.__locatorEngines.querySelectorAllDeep(baseSelector, searchRoot))
+            : Array.from(window.__locatorEngines.querySelectorAllDeep("*", searchRoot));
 
           elements = allElements.filter((el) => {
             const parent = el.parentElement;
@@ -697,8 +697,8 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
 
         try {
           const allElements = baseSelector
-            ? Array.from(searchRoot.querySelectorAll(baseSelector))
-            : Array.from(searchRoot.querySelectorAll("*"));
+            ? Array.from(window.__locatorEngines.querySelectorAllDeep(baseSelector, searchRoot))
+            : Array.from(window.__locatorEngines.querySelectorAllDeep("*", searchRoot));
 
           elements = allElements.filter((el) => {
             const parent = el.parentElement;
@@ -747,8 +747,8 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
 
       try {
         const allElements = baseSelector
-          ? Array.from(document.querySelectorAll(baseSelector))
-          : Array.from(document.querySelectorAll("*"));
+          ? Array.from(window.__locatorEngines.querySelectorAllDeep(baseSelector, document))
+          : Array.from(window.__locatorEngines.querySelectorAllDeep("*", document));
 
         elements = allElements.filter((el) => {
           return document.activeElement === el && el.matches(":active");
@@ -770,8 +770,8 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
 
       try {
         const allElements = baseSelector
-          ? Array.from(document.querySelectorAll(baseSelector))
-          : Array.from(document.querySelectorAll("*"));
+          ? Array.from(window.__locatorEngines.querySelectorAllDeep(baseSelector, document))
+          : Array.from(window.__locatorEngines.querySelectorAllDeep("*", document));
 
         elements = allElements.filter((el) => {
           return document.activeElement === el;
@@ -793,8 +793,8 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
 
       try {
         const allElements = baseSelector
-          ? Array.from(document.querySelectorAll(baseSelector))
-          : Array.from(document.querySelectorAll("*"));
+          ? Array.from(window.__locatorEngines.querySelectorAllDeep(baseSelector, document))
+          : Array.from(window.__locatorEngines.querySelectorAllDeep("*", document));
 
         elements = allElements.filter((el) => {
           return (
@@ -820,8 +820,8 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
 
       try {
         const allElements = baseSelector
-          ? Array.from(document.querySelectorAll(baseSelector))
-          : Array.from(document.querySelectorAll("*"));
+          ? Array.from(window.__locatorEngines.querySelectorAllDeep(baseSelector, document))
+          : Array.from(window.__locatorEngines.querySelectorAllDeep("*", document));
 
         elements = allElements.filter((el) => {
           return el.disabled === true || el.hasAttribute("disabled");
@@ -843,8 +843,8 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
 
       try {
         const allElements = baseSelector
-          ? Array.from(document.querySelectorAll(baseSelector))
-          : Array.from(document.querySelectorAll("*"));
+          ? Array.from(window.__locatorEngines.querySelectorAllDeep(baseSelector, document))
+          : Array.from(window.__locatorEngines.querySelectorAllDeep("*", document));
 
         elements = allElements.filter((el) => {
           return el.disabled !== true && !el.hasAttribute("disabled");
@@ -888,14 +888,14 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
 
       try {
         try {
-          return Array.from(searchRoot.querySelectorAll(locator));
+          return Array.from(window.__locatorEngines.querySelectorAllDeep(locator, searchRoot));
         } catch (_nativeError) {
           // Native failed, use custom logic
         }
 
         const allElements = baseSelector
-          ? Array.from(searchRoot.querySelectorAll(baseSelector))
-          : Array.from(searchRoot.querySelectorAll("*"));
+          ? Array.from(window.__locatorEngines.querySelectorAllDeep(baseSelector, searchRoot))
+          : Array.from(window.__locatorEngines.querySelectorAllDeep("*", searchRoot));
 
         elements = allElements.filter((el) => {
           try {
@@ -930,7 +930,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       }
     } else if (locator.includes(":is(") || locator.includes(":where(")) {
       try {
-        return Array.from(searchRoot.querySelectorAll(locator));
+        return Array.from(window.__locatorEngines.querySelectorAllDeep(locator, searchRoot));
       } catch (_error) {
         const isWhereMatch = locator.match(/:(is|where)\(([^)]+)\)/);
         if (isWhereMatch) {
@@ -944,7 +944,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
             try {
               const fullSelector = baseSelector + sel + afterSelector;
               const matched = Array.from(
-                searchRoot.querySelectorAll(fullSelector)
+                window.__locatorEngines.querySelectorAllDeep(fullSelector, searchRoot)
               );
               elements.push(...matched);
             } catch (_err) {
@@ -957,7 +957,7 @@ window.__locatorEngines.findBySmartLocator = function findBySmartLocator(
       }
     } else {
       try {
-        elements = Array.from(searchRoot.querySelectorAll(locator));
+        elements = Array.from(window.__locatorEngines.querySelectorAllDeep(locator, searchRoot));
       } catch (error) {
         throw new Error(
           `Invalid CSS selector: ${locator}. Error: ${error.message}`
