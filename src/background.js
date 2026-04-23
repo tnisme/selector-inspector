@@ -43,7 +43,7 @@ async function injectContentScript(tabId) {
       .executeScript({
         target: { tabId, allFrames: true },
         func: () => typeof window.__locatorInspect,
-        world: "MAIN",
+        world: "ISOLATED",
       })
       .catch(() => null);
 
@@ -60,7 +60,7 @@ async function injectContentScript(tabId) {
             "engine/smartLocatorEngine.js",
             "engine/injector.js",
           ],
-          world: "MAIN",
+          world: "ISOLATED",
         });
 
         await new Promise((resolve) => setTimeout(resolve, 100));
@@ -77,7 +77,7 @@ async function injectContentScript(tabId) {
                   : [],
               };
             },
-            world: "MAIN",
+            world: "ISOLATED",
           })
           .catch(() => null);
 
@@ -99,7 +99,7 @@ async function injectContentScript(tabId) {
                 window.__locatorInspect.__active = true;
               }
             },
-            world: "MAIN",
+            world: "ISOLATED",
           })
           .catch(() => { });
       } catch (error) {
@@ -114,7 +114,7 @@ async function injectContentScript(tabId) {
               window.__locatorInspect.__active = true;
             }
           },
-          world: "MAIN",
+          world: "ISOLATED",
         })
         .catch(() => { });
     }
@@ -142,7 +142,7 @@ async function cleanupTab(tabId) {
           window.__locatorInspect.__active = false;
         }
       },
-      world: "MAIN",
+      world: "ISOLATED",
     });
   } catch (_error) {
     // Tab might be closed or inaccessible, ignore error
