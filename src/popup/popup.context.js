@@ -112,7 +112,7 @@ async function ensureContextScriptsLoaded(tabId) {
         const checkResult = await chrome.scripting.executeScript({
             target: { tabId },
             func: () => typeof window.ContextTree,
-            world: 'MAIN',
+            world: 'ISOLATED',
         });
 
         if (checkResult?.[0]?.result === 'function') {
@@ -123,7 +123,7 @@ async function ensureContextScriptsLoaded(tabId) {
         await chrome.scripting.executeScript({
             target: { tabId },
             files: ['context/contextModel.js'],
-            world: 'MAIN',
+            world: 'ISOLATED',
         });
 
         console.log('[Context] Scripts injected into tab', tabId);
@@ -277,7 +277,7 @@ async function highlightIframe(contextId) {
                 });
             },
             args: [frameId],
-            world: 'MAIN',
+            world: 'ISOLATED',
         });
     } catch (error) {
         console.error('[Context] Highlight failed:', error);
@@ -297,7 +297,7 @@ async function clearIframeHighlight() {
                     iframe.style.outlineOffset = '';
                 });
             },
-            world: 'MAIN',
+            world: 'ISOLATED',
         });
     } catch (_error) {
         // Ignore errors

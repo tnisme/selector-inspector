@@ -26,7 +26,7 @@ function setInjectionGlobals(ts, li) {
 
 function clearOverlays() {
   const container = document.getElementById(
-    "locator-inspector-overlay-container"
+    "locator-inspector-overlay-container",
   );
   if (container) {
     if (container._cleanup) container._cleanup();
@@ -71,7 +71,7 @@ async function triggerInspection() {
       await resetToTopDocument();
       return showResult(
         "The selected iframe no longer exists. Reset to top document.",
-        "error"
+        "error",
       );
     }
   } catch (error) {
@@ -80,14 +80,18 @@ async function triggerInspection() {
 
   // NEW: Check if engines are loaded in target frame
   let isLoaded = false;
+  let lastError = null;
   for (let i = 0; i < 3; i++) {
     const checkResult = await chrome.scripting
       .executeScript({
         target: { tabId: tab.id, frameIds: [frameId] }, // NEW: Use frameIds
         func: () => typeof window.__locatorInspect,
-        world: "MAIN",
+        world: "ISOLATED",
       })
-      .catch(() => null);
+      .catch((e) => {
+        lastError = e.message;
+        return null;
+      });
 
     if (checkResult?.[0]?.result === "function") {
       isLoaded = true;
@@ -95,7 +99,22 @@ async function triggerInspection() {
     }
 
     if (i === 0) {
-      chrome.runtime.sendMessage({ type: "panel-opened" }).catch(() => { });
+      chrome.runtime.sendMessage({ type: "panel-opened" }).catch(() => {});
+      await chrome.scripting
+        .executeScript({
+          target: { tabId: tab.id, frameIds: [frameId] },
+          files: [
+            "engine/cssEngine.js",
+            "engine/xpathEngine.js",
+            "engine/playwrightEngine.js",
+            "engine/smartLocatorEngine.js",
+            "engine/injector.js",
+          ],
+          world: "ISOLATED",
+        })
+        .catch((e) => {
+          lastError = e.message;
+        });
       await new Promise((resolve) => setTimeout(resolve, 200));
     } else {
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -103,10 +122,11 @@ async function triggerInspection() {
   }
 
   if (!isLoaded) {
-    return showResult(
-      "Inspection function not loaded in selected context. Please refresh the page and try again.",
-      "error"
-    );
+    let msg = "Inspection function not loaded in selected context";
+    if (lastError) msg += `: ${lastError}`;
+    msg +=
+      " Please refreshing the page or re-selecting the context from the dropdown.";
+    return showResult(msg, "error");
   }
 
   const requestId = nextRequestId();
@@ -118,7 +138,7 @@ async function triggerInspection() {
       if (window.__locatorInspect) window.__locatorInspect.__lastRequestId = id;
     },
     args: [requestId],
-    world: "MAIN",
+    world: "ISOLATED",
   });
 
   try {
@@ -142,7 +162,7 @@ async function triggerInspection() {
         }
       },
       args: [locator, type, requestId],
-      world: "MAIN",
+      world: "ISOLATED",
     });
 
     // NEW: Check if user switched context during execution
@@ -181,7 +201,7 @@ async function clearPageOverlays() {
   chrome.scripting.executeScript({
     target: { tabId: tab.id, allFrames: true },
     func: clearOverlays,
-    world: "MAIN",
+    world: "ISOLATED",
   });
 }
 
@@ -200,9 +220,9 @@ async function triggerHighlight(index) {
         if (window.__locatorHighlight) window.__locatorHighlight(idx);
       },
       args: [index],
-      world: "MAIN",
+      world: "ISOLATED",
     })
-    .catch(() => { });
+    .catch(() => {});
 }
 
 export {
