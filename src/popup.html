@@ -1,441 +1,1165 @@
-<!DOCTYPE html>
-<html>
-
-<head>
-  <meta charset="utf-8" />
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    :root {
-      /* Light theme (default) */
-      --primary: #F8F8F0;
-      /* Lighter beige for better contrast */
-      --primary-dark: #E8E8D8;
-      --secondary: #000080;
-      /* Navy */
-      --text: #222222;
-      /* Darker text for better readability */
-      --text-light: #444444;
-      --border: #C0B090;
-      /* Warmer tan */
-      --shadow: rgba(0, 0, 0, 0.15);
-    }
-
-    /* Dark theme */
-    [data-theme="dark"] {
-      --primary: #333333;
-      --primary-dark: #282828;
-      --secondary: #7AA7FF;
-      --text: #F0F0E0;
-      --text-light: #D2B48C;
-      --border: #6D6D6D;
-      --shadow: rgba(0, 0, 0, 0.5);
-    }
-
-    body {
-      margin: 0;
-      padding: 0;
-      height: 100vh;
-      font-family: 'Courier New', Courier, monospace;
-      background: var(--primary);
-      color: var(--text);
-      overflow-x: hidden;
-      transition: background-color 0.3s ease, color 0.3s ease;
-      font-weight: 500;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-
-    .container {
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      padding: 16px;
-      gap: 16px;
-      background: repeating-linear-gradient(0deg,
-          var(--primary),
-          var(--primary) 1px,
-          var(--primary-dark) 1px,
-          var(--primary-dark) 2px);
-      background-size: 100% 2px;
-      background-attachment: local;
-    }
-
-    .header {
-      background: var(--primary);
-      border-radius: 4px;
-      padding: 16px;
-      border: 2px solid var(--secondary);
-      box-shadow: 4px 4px 0 var(--shadow);
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .header::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, var(--secondary), transparent);
-    }
-
-    h2 {
-      margin: 0 0 8px 0;
-      color: var(--secondary);
-      font-size: 20px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      text-shadow: 1px 1px 0 var(--primary-dark);
-    }
-
-    .content {
-      flex: 1;
-      background: var(--primary);
-      border-radius: 4px;
-      padding: 20px;
-      border: 2px solid var(--secondary);
-      box-shadow: 4px 4px 0 var(--shadow);
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      min-height: 0;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .content::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: repeating-linear-gradient(0deg,
-          transparent,
-          transparent 19px,
-          rgba(0, 0, 0, 0.03) 19px,
-          rgba(0, 0, 0, 0.03) 20px);
-      pointer-events: none;
-    }
-
-    .form-section {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    label {
-      font-weight: 800;
-      color: var(--secondary);
-      font-size: 13px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 8px;
-      display: inline-block;
-      border-bottom: 2px solid var(--secondary);
-      padding-bottom: 4px;
-    }
-
-    select,
-    textarea {
-      padding: 12px 14px;
-      border: 2px solid var(--secondary);
-      border-radius: 0;
-      font-size: 14px;
-      font-weight: 600;
-      transition: all 0.2s;
-      background: var(--primary);
-      color: var(--text);
-      font-family: 'Courier New', Courier, monospace;
-      box-shadow: 2px 2px 0 var(--shadow);
-    }
-
-    select:focus,
-    textarea:focus {
-      outline: none;
-      border-color: var(--secondary);
-      box-shadow: 0 0 0 2px var(--secondary);
-    }
-
-    select:hover,
-    textarea:hover {
-      background-color: var(--primary-dark);
-    }
-
-    textarea {
-      min-height: 120px;
-      max-height: 200px;
-      resize: vertical;
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 13px;
-      line-height: 1.6;
-      color: var(--text);
-      background: repeating-linear-gradient(to bottom,
-          transparent,
-          transparent 20px,
-          rgba(0, 0, 0, 0.03) 20px,
-          rgba(0, 0, 0, 0.03) 21px);
-      background-color: var(--primary);
-    }
-
-    .footer {
-      margin-top: auto;
-      padding-top: 20px;
-      border-top: 2px dashed var(--secondary);
-      position: relative;
-    }
-
-    .footer::before {
-      content: '▶';
-      position: absolute;
-      top: -10px;
-      left: -10px;
-      color: var(--secondary);
-      font-size: 14px;
-    }
-
-    button {
-      width: 100%;
-      padding: 14px;
-      background: var(--secondary);
-      color: var(--primary);
-      border: 2px solid var(--secondary);
-      border-radius: 0;
-      font-size: 15px;
-      font-weight: 800;
-      font-family: 'Courier New', Courier, monospace;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      cursor: pointer;
-      transition: all 0.2s;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 3px 3px 0 var(--shadow);
-    }
-
-    button:hover:not(:disabled) {
-      background: var(--primary);
-      color: var(--secondary);
-      transform: translate(-1px, -1px);
-      box-shadow: 4px 4px 0 var(--shadow);
-    }
-
-    button:active {
-      transform: translate(0, 0);
-      box-shadow: 2px 2px 0 var(--shadow);
-    }
-
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
-    }
-
-
-
-    #result {
-      padding: 16px;
-      border-radius: 0;
-      font-size: 14px;
-      font-weight: 600;
-      white-space: pre-wrap;
-      line-height: 1.7;
-      display: none;
-      border: 2px solid var(--secondary);
-      font-family: 'Courier New', Courier, monospace;
-      background: var(--primary);
-      color: var(--text);
-      box-shadow: 3px 3px 0 var(--shadow);
-      position: relative;
-      overflow: auto;
-      max-height: 200px;
-    }
-
-    .result-success {
-      background: repeating-linear-gradient(45deg,
-          rgba(0, 128, 0, 0.1),
-          rgba(0, 128, 0, 0.1) 10px,
-          rgba(0, 100, 0, 0.1) 10px,
-          rgba(0, 100, 0, 0.1) 20px);
-      border-color: #4CAF50;
-      color: #2E7D32;
-    }
-
-    .result-error {
-      background: repeating-linear-gradient(45deg,
-          rgba(244, 67, 54, 0.1),
-          rgba(244, 67, 54, 0.1) 10px,
-          rgba(198, 40, 40, 0.1) 10px,
-          rgba(198, 40, 40, 0.1) 20px);
-      border-color: #F44336;
-      color: #C62828;
-    }
-
-    .result-info {
-      background: repeating-linear-gradient(45deg,
-          rgba(33, 150, 243, 0.1),
-          rgba(33, 150, 243, 0.1) 10px,
-          rgba(13, 71, 161, 0.1) 10px,
-          rgba(13, 71, 161, 0.1) 20px);
-      border-color: #2196F3;
-      color: #0D47A1;
-    }
-
-    .loading {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 2px solid var(--primary);
-      border-top: 2px solid var(--secondary);
-      border-right: 2px solid var(--secondary);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin-right: 8px;
-      vertical-align: middle;
-    }
-
-    @keyframes spin {
-      0% {
-        transform: rotate(0deg);
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Locator Inspector</title>
+    <style>
+      /* cyrillic-ext */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("fonts/inter-149b91c0.woff2") format("woff2");
+        unicode-range:
+          U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F,
+          U+FE2E-FE2F;
+      }
+      /* cyrillic */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("fonts/inter-48169c9a.woff2") format("woff2");
+        unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+      }
+      /* greek-ext */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("fonts/inter-69c13834.woff2") format("woff2");
+        unicode-range: U+1F00-1FFF;
+      }
+      /* greek */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("fonts/inter-bd611624.woff2") format("woff2");
+        unicode-range:
+          U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1,
+          U+03A3-03FF;
+      }
+      /* vietnamese */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("fonts/inter-2f6ef12b.woff2") format("woff2");
+        unicode-range:
+          U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1,
+          U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329,
+          U+1EA0-1EF9, U+20AB;
+      }
+      /* latin-ext */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("fonts/inter-2ba74ade.woff2") format("woff2");
+        unicode-range:
+          U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+          U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+          U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+      }
+      /* latin */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("fonts/inter-13695abc.woff2") format("woff2");
+        unicode-range:
+          U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+          U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+          U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+      /* cyrillic-ext */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url("fonts/inter-149b91c0.woff2") format("woff2");
+        unicode-range:
+          U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F,
+          U+FE2E-FE2F;
+      }
+      /* cyrillic */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url("fonts/inter-48169c9a.woff2") format("woff2");
+        unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+      }
+      /* greek-ext */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url("fonts/inter-69c13834.woff2") format("woff2");
+        unicode-range: U+1F00-1FFF;
+      }
+      /* greek */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url("fonts/inter-bd611624.woff2") format("woff2");
+        unicode-range:
+          U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1,
+          U+03A3-03FF;
+      }
+      /* vietnamese */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url("fonts/inter-2f6ef12b.woff2") format("woff2");
+        unicode-range:
+          U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1,
+          U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329,
+          U+1EA0-1EF9, U+20AB;
+      }
+      /* latin-ext */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url("fonts/inter-2ba74ade.woff2") format("woff2");
+        unicode-range:
+          U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+          U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+          U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+      }
+      /* latin */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url("fonts/inter-13695abc.woff2") format("woff2");
+        unicode-range:
+          U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+          U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+          U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+      /* cyrillic-ext */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 600;
+        font-display: swap;
+        src: url("fonts/inter-149b91c0.woff2") format("woff2");
+        unicode-range:
+          U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F,
+          U+FE2E-FE2F;
+      }
+      /* cyrillic */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 600;
+        font-display: swap;
+        src: url("fonts/inter-48169c9a.woff2") format("woff2");
+        unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+      }
+      /* greek-ext */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 600;
+        font-display: swap;
+        src: url("fonts/inter-69c13834.woff2") format("woff2");
+        unicode-range: U+1F00-1FFF;
+      }
+      /* greek */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 600;
+        font-display: swap;
+        src: url("fonts/inter-bd611624.woff2") format("woff2");
+        unicode-range:
+          U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1,
+          U+03A3-03FF;
+      }
+      /* vietnamese */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 600;
+        font-display: swap;
+        src: url("fonts/inter-2f6ef12b.woff2") format("woff2");
+        unicode-range:
+          U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1,
+          U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329,
+          U+1EA0-1EF9, U+20AB;
+      }
+      /* latin-ext */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 600;
+        font-display: swap;
+        src: url("fonts/inter-2ba74ade.woff2") format("woff2");
+        unicode-range:
+          U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+          U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+          U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+      }
+      /* latin */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 600;
+        font-display: swap;
+        src: url("fonts/inter-13695abc.woff2") format("woff2");
+        unicode-range:
+          U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+          U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+          U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+      /* cyrillic-ext */
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("fonts/inter-c9ee6f11.woff2") format("woff2");
+        unicode-range:
+          U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F,
+          U+FE2E-FE2F;
+      }
+      /* cyrillic */
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("fonts/inter-ec8a4ce6.woff2") format("woff2");
+        unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+      }
+      /* greek */
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("fonts/inter-29d65bba.woff2") format("woff2");
+        unicode-range:
+          U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1,
+          U+03A3-03FF;
+      }
+      /* vietnamese */
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("fonts/inter-74d5eca6.woff2") format("woff2");
+        unicode-range:
+          U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1,
+          U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329,
+          U+1EA0-1EF9, U+20AB;
+      }
+      /* latin-ext */
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("fonts/inter-450d20c7.woff2") format("woff2");
+        unicode-range:
+          U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+          U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+          U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+      }
+      /* latin */
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("fonts/inter-f99ccd0a.woff2") format("woff2");
+        unicode-range:
+          U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+          U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+          U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+      /* cyrillic-ext */
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url("fonts/inter-c9ee6f11.woff2") format("woff2");
+        unicode-range:
+          U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F,
+          U+FE2E-FE2F;
+      }
+      /* cyrillic */
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url("fonts/inter-ec8a4ce6.woff2") format("woff2");
+        unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+      }
+      /* greek */
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url("fonts/inter-29d65bba.woff2") format("woff2");
+        unicode-range:
+          U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1,
+          U+03A3-03FF;
+      }
+      /* vietnamese */
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url("fonts/inter-74d5eca6.woff2") format("woff2");
+        unicode-range:
+          U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1,
+          U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329,
+          U+1EA0-1EF9, U+20AB;
+      }
+      /* latin-ext */
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url("fonts/inter-450d20c7.woff2") format("woff2");
+        unicode-range:
+          U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+          U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+          U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+      }
+      /* latin */
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url("fonts/inter-f99ccd0a.woff2") format("woff2");
+        unicode-range:
+          U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+          U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+          U+2212, U+2215, U+FEFF, U+FFFD;
       }
 
-      100% {
-        transform: rotate(360deg);
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
       }
-    }
 
-    .badge {
-      display: inline-block;
-      background: var(--secondary);
-      color: var(--primary);
-      padding: 2px 6px;
-      border-radius: 2px;
-      font-size: 10px;
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-left: 8px;
-      position: relative;
-      top: -2px;
-      box-shadow: 1px 1px 0 var(--shadow);
-      color: white;
-      font-size: 11px;
-      font-weight: 500;
-      padding: 2px 6px;
-      border-radius: 10px;
-      margin-left: 8px;
-    }
+      :root {
+        --bg: #f4f5f7;
+        --surface: #ffffff;
+        --surface2: #f0f1f4;
+        --border: #e2e4e9;
+        --border2: #d1d5db;
+        --text: #111827;
+        --text2: #6b7280;
+        --text3: #9ca3af;
+        --accent: #2563eb;
+        --accent-bg: #eff4ff;
+        --green: #059669;
+        --green-bg: #ecfdf5;
+        --red: #dc2626;
+        --red-bg: #fef2f2;
+        --amber: #d97706;
+        --amber-bg: #fffbeb;
+        --shadow-sm:
+          0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+        --shadow: 0 4px 12px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.05);
+        --radius: 10px;
+        --radius-sm: 6px;
+        --font-ui: "Inter", system-ui, sans-serif;
+        --font-code: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+        --syntax-tag: #800080;
+        --syntax-id: #000080;
+        --syntax-class: #008080;
+        --syntax-attr: #a0522d;
+        --syntax-text: #555555;
+        --item-hover: rgba(0, 0, 0, 0.06);
+      }
 
-    /* Scrollbar styling */
-    ::-webkit-scrollbar {
-      width: 6px;
-    }
+      [data-theme="dark"] {
+        --bg: #0d0f14;
+        --surface: #161920;
+        --surface2: #1e2129;
+        --border: #272b35;
+        --border2: #333845;
+        --text: #f1f3f7;
+        --text2: #8b92a3;
+        --text3: #545c6e;
+        --accent: #60a5fa;
+        --accent-bg: #1a2440;
+        --green: #34d399;
+        --green-bg: #0d2a20;
+        --red: #f87171;
+        --red-bg: #2a0d0d;
+        --amber: #fbbf24;
+        --amber-bg: #2a1f0d;
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+        --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        --syntax-tag: #d946ef;
+        --syntax-id: #60a5fa;
+        --syntax-class: #2dd4bf;
+        --syntax-attr: #fb923c;
+        --syntax-text: #9ca3af;
+        --item-hover: rgba(255, 255, 255, 0.08);
+      }
 
-    ::-webkit-scrollbar-track {
-      background: #f1f1f1;
-    }
+      html,
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font-ui);
+        font-size: 14px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+        transition:
+          background 0.2s,
+          color 0.2s;
+      }
 
-    ::-webkit-scrollbar-thumb {
-      background: #c1c1c1;
-      border-radius: 3px;
-    }
+      .popup {
+        display: flex;
+        flex-direction: column;
+        padding: 16px;
+        gap: 12px;
+      }
 
-    ::-webkit-scrollbar-thumb:hover {
-      background: #a8a8a8;
-    }
-  </style>
-</head>
+      /* ── Header ── */
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-sm);
+      }
 
-<body>
-  <div class="container">
-    <div class="header">
-      <h2>Locator Inspector <span class="badge">DevTools</span></h2>
-      <button id="themeToggle" title="Toggle dark/light mode"
-        style="background: none; border: none; cursor: pointer; padding: 5px; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; color: var(--secondary);">
-        <svg id="sunIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round" style="display: none;">
-          <circle cx="12" cy="12" r="5"></circle>
-          <line x1="12" y1="1" x2="12" y2="3"></line>
-          <line x1="12" y1="21" x2="12" y2="23"></line>
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-          <line x1="1" y1="12" x2="3" y2="12"></line>
-          <line x1="21" y1="12" x2="23" y2="12"></line>
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-        </svg>
-        <svg id="moonIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-        </svg>
-      </button>
-    </div>
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
 
-    <div class="content">
-      <div class="form-section">
-        <div class="form-group">
-          <label for="type">Locator Type</label>
-          <select id="type">
-            <option value="css">CSS Selector</option>
-            <option value="xpath">XPath</option>
-            <option value="playwright">Playwright</option>
-            <option value="smart">Smart Locator</option>
-          </select>
+      .logo {
+        width: 30px;
+        height: 30px;
+        background: var(--accent);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .logo svg {
+        color: #fff;
+      }
+
+      .title-wrap {
+      }
+      .title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+        letter-spacing: -0.01em;
+      }
+      .subtitle {
+        font-size: 11px;
+        color: var(--text3);
+        font-family: var(--font-code);
+        margin-top: 1px;
+      }
+
+      .theme-btn {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--border);
+        background: var(--surface2);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text2);
+        transition:
+          background 0.15s,
+          color 0.15s,
+          border-color 0.15s;
+        flex-shrink: 0;
+      }
+      .theme-btn:hover {
+        background: var(--border);
+        color: var(--text);
+      }
+
+      /* ── Card ── */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+      }
+
+      /* ── Form ── */
+      .form-body {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .field-label {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text2);
+        letter-spacing: 0.01em;
+      }
+
+      select,
+      textarea {
+        font-family: var(--font-ui);
+        font-size: 13.5px;
+        color: var(--text);
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 8px 10px;
+        transition:
+          border-color 0.15s,
+          box-shadow 0.15s,
+          background 0.15s;
+        appearance: none;
+        -webkit-appearance: none;
+        outline: none;
+      }
+
+      select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        padding-right: 28px;
+        cursor: pointer;
+      }
+
+      select:focus,
+      textarea:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+        background: var(--surface);
+      }
+
+      .context-row {
+        display: flex;
+        gap: 8px;
+      }
+      .context-row select {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .refresh-btn {
+        height: 36px;
+        width: 36px;
+        padding: 0;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        color: var(--text2);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition:
+          background 0.15s,
+          border-color 0.15s,
+          color 0.15s;
+        flex-shrink: 0;
+      }
+      .refresh-btn:hover {
+        background: var(--border);
+        color: var(--text);
+        border-color: var(--border2);
+      }
+      .refresh-btn svg {
+        flex-shrink: 0;
+      }
+
+      .context-pill {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--accent-bg);
+        border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+        border-radius: var(--radius-sm);
+        padding: 5px 10px;
+        font-size: 12px;
+        color: var(--accent);
+      }
+      .context-pill-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        flex-shrink: 0;
+      }
+      .context-pill span {
+        font-family: var(--font-code);
+        font-size: 11.5px;
+      }
+
+      textarea {
+        font-family: var(--font-code);
+        font-size: 12.5px;
+        line-height: 1.65;
+        min-height: 96px;
+        max-height: 160px;
+        resize: vertical;
+        color: var(--text);
+      }
+      textarea::placeholder {
+        color: var(--text3);
+      }
+
+      /* ── Divider ── */
+      .divider {
+        height: 1px;
+        background: var(--border);
+        margin: 0 16px;
+      }
+
+      /* ── Run button ── */
+      .run-wrap {
+        padding: 12px 16px;
+      }
+
+      .run-btn {
+        width: 100%;
+        padding: 10px 16px;
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: var(--radius-sm);
+        font-family: var(--font-ui);
+        font-size: 13.5px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition:
+          opacity 0.15s,
+          transform 0.1s,
+          box-shadow 0.15s;
+        box-shadow: 0 1px 3px color-mix(in srgb, var(--accent) 40%, transparent);
+        letter-spacing: 0.01em;
+      }
+      .run-btn:hover:not(:disabled) {
+        opacity: 0.92;
+        box-shadow: 0 3px 8px color-mix(in srgb, var(--accent) 40%, transparent);
+      }
+      .run-btn:active:not(:disabled) {
+        transform: scale(0.99);
+      }
+      .run-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      .spinner {
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255, 255, 255, 0.35);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        display: none;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* ── Result ── */
+      .result-wrap {
+        padding: 0 16px 14px;
+        display: none;
+      }
+
+      .result-box {
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        overflow: hidden;
+      }
+
+      .result-header {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      .result-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+
+      .result-body {
+        padding: 10px 12px;
+        font-family: var(--font-code);
+        font-size: 12px;
+        line-height: 1.65;
+        white-space: pre-wrap;
+        word-break: break-all;
+        border-top: 1px solid var(--border);
+        background: var(--surface2);
+        color: var(--text);
+        max-height: 120px;
+        overflow-y: auto;
+      }
+
+      .result-success .result-header {
+        background: var(--green-bg);
+        color: var(--green);
+      }
+      .result-success .result-dot {
+        background: var(--green);
+      }
+      .result-error .result-header {
+        background: var(--red-bg);
+        color: var(--red);
+      }
+      .result-error .result-dot {
+        background: var(--red);
+      }
+      .result-info .result-header {
+        background: var(--accent-bg);
+        color: var(--accent);
+      }
+      .result-info .result-dot {
+        background: var(--accent);
+      }
+
+      /* ── Inline loading spinner (result body) ── */
+      .loading {
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        border: 2px solid var(--border2);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        vertical-align: middle;
+        margin-right: 6px;
+      }
+
+      /* ── Score panel ── */
+      .score-wrap {
+        padding: 0 16px 14px;
+        display: none;
+      }
+
+      .score-card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+      }
+
+      .score-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: var(--surface2);
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.15s;
+      }
+      .score-header:hover {
+        background: var(--border);
+      }
+
+      .score-header-left {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .score-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text2);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .score-chevron {
+        color: var(--text3);
+        flex-shrink: 0;
+        transition: transform 0.25s ease;
+      }
+      .score-header.open .score-chevron {
+        transform: rotate(180deg);
+      }
+
+      .score-value-row {
+        display: flex;
+        align-items: baseline;
+        gap: 3px;
+      }
+      .score-num {
+        font-family: var(--font-code);
+        font-size: 20px;
+        font-weight: 500;
+        line-height: 1;
+      }
+      .score-denom {
+        font-size: 11px;
+        color: var(--text3);
+        font-family: var(--font-code);
+      }
+      .score-conf {
+        font-size: 10px;
+        color: var(--text3);
+        font-style: italic;
+        margin-left: 4px;
+      }
+
+      .score-details {
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        transition: max-height 0.28s ease, opacity 0.2s ease;
+        border-top: 0px solid var(--border);
+      }
+      .score-details.open {
+        max-height: 600px;
+        opacity: 1;
+        border-top-width: 1px;
+      }
+
+      .score-rows {
+        padding: 8px 0;
+      }
+      .score-row-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 12px;
+        font-size: 12px;
+      }
+      .score-row-name {
+        color: var(--text2);
+      }
+      .score-row-val {
+        font-family: var(--font-code);
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      .score-suggestions {
+        border-top: 1px solid var(--border);
+        padding: 8px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .score-suggestion-label {
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text3);
+        margin-bottom: 2px;
+      }
+      .score-suggestion-item {
+        font-size: 12px;
+        color: var(--text2);
+        line-height: 1.4;
+      }
+
+      /* ── Scrollbar ── */
+      ::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border2);
+        border-radius: 99px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--text3);
+      }
+
+      /* ── Animations ── */
+      .fade-in {
+        animation: fadeIn 0.18s ease forwards;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="popup">
+      <!-- Header -->
+      <div class="header">
+        <div class="header-left">
+          <div class="logo">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              <line x1="11" y1="8" x2="11" y2="14"></line>
+              <line x1="8" y1="11" x2="14" y2="11"></line>
+            </svg>
+          </div>
+          <div class="title-wrap">
+            <div class="title">Locator Inspector</div>
+            <div class="subtitle">devtools</div>
+          </div>
         </div>
+        <button
+          class="theme-btn"
+          id="themeToggle"
+          title="Toggle theme"
+          aria-label="Toggle theme"
+        >
+          <svg
+            id="iconMoon"
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <svg
+            id="iconSun"
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="display: none"
+          >
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+      </div>
 
-        <div class="form-group">
-          <label for="context">DOM Context</label>
-          <div style="display: flex; gap: 8px;">
-            <select id="context"
-              style="flex: 1; min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-              <option value="frame-0">Top Document</option>
-            </select>
-            <button id="refreshContexts" style="width: auto; padding: 12px 16px; font-size: 12px;">
-              ↻ Refresh
-            </button>
+      <!-- Main card -->
+      <div class="card">
+        <div class="form-body">
+          <!-- Locator Type + DOM Context row -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+            <div class="field" style="min-width: 0">
+              <label class="field-label" for="type">Locator Type</label>
+              <select id="type">
+                <option value="css">CSS Selector</option>
+                <option value="xpath">XPath</option>
+                <option value="playwright">Playwright</option>
+                <option value="smart">Smart Locator</option>
+              </select>
+            </div>
+            <div class="field" style="min-width: 0">
+              <label class="field-label" for="context">DOM Context</label>
+              <div class="context-row">
+                <select id="context">
+                  <option value="frame-0">Top Document</option>
+                </select>
+                <button
+                  class="refresh-btn"
+                  id="refreshContexts"
+                  title="Refresh contexts"
+                >
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Active context pill -->
+          <div class="context-pill" id="activeContext">
+            <span class="context-pill-dot"></span>
+            <span id="activeContextLabel">Top Document</span>
+          </div>
+
+          <!-- Locator expression -->
+          <div class="field">
+            <label class="field-label" for="locator">Locator Expression</label>
+            <textarea
+              id="locator"
+              placeholder="e.g. #submit-btn, //button[@type='submit']"
+              spellcheck="false"
+            ></textarea>
           </div>
         </div>
 
-        <div id="activeContext" style="
-          padding: 8px 12px;
-          background: var(--primary-dark);
-          border: 1px solid var(--secondary);
-          border-radius: 4px;
-          font-size: 12px;
-          margin-bottom: 12px;
-        ">
-          <strong>Current Context:</strong> <span id="activeContextLabel">Top Document</span>
+        <div class="divider"></div>
+
+        <!-- Run button -->
+        <div class="run-wrap">
+          <button class="run-btn" id="runBtn">
+            <div class="spinner" id="spinner"></div>
+            <svg
+              id="runIcon"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            <span id="runLabel">Inspect Locator</span>
+          </button>
         </div>
 
-        <div class="form-group">
-          <label for="locator">Locator Expression</label>
-          <textarea id="locator" placeholder="Enter your locator here..."></textarea>
+        <!-- Score panel -->
+        <div class="score-wrap" id="score-panel">
+          <div class="score-card">
+            <div class="score-header" id="score-header">
+              <div class="score-header-left">
+                <span class="score-label">Quality Score</span>
+                <svg class="score-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+              <div class="score-value-row">
+                <span class="score-num" id="score-value">&#8212;</span>
+                <span class="score-denom">/100</span>
+                <span class="score-conf" id="score-confidence"></span>
+                <span
+                  id="score-dot"
+                  style="
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+                    display: inline-block;
+                    margin-left: 6px;
+                    flex-shrink: 0;
+                  "
+                ></span>
+              </div>
+            </div>
+            <div class="score-details" id="score-details">
+              <div class="score-rows" id="score-breakdown"></div>
+              <div
+                class="score-suggestions"
+                id="score-suggestions"
+                style="display: none"
+              ></div>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div class="footer">
-        <div id="result"></div>
+        <!-- Result -->
+        <div class="result-wrap" id="resultWrap">
+          <div class="result-box" id="resultBox">
+            <div class="result-header" id="resultHeader">
+              <div class="result-dot"></div>
+              <span id="resultTitle">Result</span>
+            </div>
+            <div class="result-body" id="result"></div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <script src="theme.js"></script>
-  <script type="module" src="popup/popup.js"></script>
-</body>
-
+    <script src="theme.js"></script>
+    <script type="module" src="popup/popup.js"></script>
+  </body>
 </html>
