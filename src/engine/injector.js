@@ -62,7 +62,6 @@ window.__locatorInspect = function (locator, type, requestId) {
     const createOverlays = requestId === undefined || lastId === requestId;
 
     let elements = [];
-    let _details = "";
 
     switch (type) {
       case "css": {
@@ -254,12 +253,20 @@ window.__locatorInspect = function (locator, type, requestId) {
         }
       }
 
+      let domDepth = 0;
+      let depthNode = el;
+      while (depthNode && depthNode !== document.body) {
+        domDepth++;
+        depthNode = depthNode.parentElement;
+      }
+
       return {
         tagName,
         id,
         className,
         text,
-        attributes
+        attributes,
+        domDepth,
       };
     });
 

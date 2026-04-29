@@ -13,6 +13,7 @@ Locator Inspector lets you:
 - **Inspect inside iframes** seamlessly using the explicit DOM Context dropdown (supports both same-origin 🟢 and cross-origin 🔴)
 - **Deep search into Shadow DOM** seamlessly across CSS, Playwright, and Smart Locators
 - See matches highlighted on the page with numbered badges
+- **Score your locators** (0–100) with a per-rule breakdown and actionable suggestions — updated live as you type and verified after each inspection
 
 **Intended use**: Rapid validation of selectors during test development. Not a replacement for running actual test code.
 
@@ -153,6 +154,7 @@ Page context (MAIN world isolation)
 - [x] Live visual feedback on matches
 - [x] Persistence of last locator/type
 - [x] Light/dark theme toggle
+- [x] Locator quality scoring (0–100) with breakdown and suggestions
 
 ### What We Do NOT Support
 
@@ -226,6 +228,10 @@ Prevents overlays from accumulating if user forgets them. **Trade-off**: Cannot 
 ---
 
 ## Release & Versioning
+
+### Version 0.2.0 (Apr 2026)
+
+**Status**: Feature release. Adds the Locator Scorer, a full UI redesign, Inter font, and DOM depth reporting. Breaking changes possible without notice.
 
 ### Version 0.1.0 (Jan 2026)
 
