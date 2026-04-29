@@ -1,5 +1,6 @@
 import { nextRequestId, getCurrentRequestId } from "./popup.state.js";
-import { showLoading, showResult, hideResult } from "./popup.ui.js";
+import { showLoading, showResult, hideResult, showScore, hideScore } from "./popup.ui.js";
+import { scoreLive } from "../scorer/locatorScorer.mjs";
 import {
   getActiveContextId,
   getActiveContextLabel,
@@ -49,6 +50,7 @@ async function triggerInspection() {
 
   if (!locator) {
     hideResult();
+    hideScore();
     clearPageOverlays();
     return;
   }
@@ -183,10 +185,13 @@ async function triggerInspection() {
 
     if (r.error) {
       showResult(`${r.error}\n\nContext: ${contextLabel}`, "error");
+      // keep static preview score — locator is syntactically invalid
     } else if (r.count === 0) {
       showResult(`No elements found\n\nContext: ${contextLabel}`, "error");
+      showScore(scoreLive(locator, type, 0, []));
     } else {
       showResult(r.elementsInfo, "success");
+      showScore(scoreLive(locator, type, r.count, r.elementsInfo));
     }
   } catch (err) {
     showResult(`Inspection failed: ${err.message}`, "error");

@@ -4,21 +4,36 @@ import {
   saveLocatorValue,
 } from "./popup.state.js";
 import { debounceInspection, triggerInspection, triggerHighlight } from "./popup.inject.js";
+import { scoreStatic } from "../scorer/locatorScorer.mjs";
 
-let resultDiv;
+let resultWrap, resultBox, resultTitle, resultDiv;
 let typeSelect, locatorInput;
+let _scoreToggleInit = false;
 
 function initPopupUI() {
-  resultDiv = document.getElementById("result");
+  resultWrap  = document.getElementById("resultWrap");
+  resultBox   = document.getElementById("resultBox");
+  resultTitle = document.getElementById("resultTitle");
+  resultDiv   = document.getElementById("result");
 
   typeSelect.addEventListener("change", () => {
     saveLocatorType(typeSelect.value);
     updatePlaceholder();
-    if (locatorInput.value.trim()) triggerInspection();
+    const locator = locatorInput.value.trim();
+    if (locator) {
+      showScore(scoreStatic(locator, typeSelect.value));
+      triggerInspection();
+    }
   });
 
   locatorInput.addEventListener("input", () => {
     saveLocatorValue(locatorInput.value);
+    const locator = locatorInput.value.trim();
+    if (locator) {
+      showScore(scoreStatic(locator, typeSelect.value));
+    } else {
+      hideScore();
+    }
     debounceInspection();
   });
 
@@ -41,24 +56,22 @@ function initPopupUI() {
 }
 
 function showResult(data, type) {
-  resultDiv.className = `result-${type}`;
-  resultDiv.style.display = "block";
+  resultWrap.style.display = "block";
+  resultBox.className = `result-box result-${type}`;
+  resultDiv.className = "";
 
   if (typeof data === "string") {
+    resultTitle.textContent = type === "error" ? "Error" : type === "success" ? "Match" : "Info";
     resultDiv.textContent = data;
     return;
   }
 
   // Handle detailed element list
   if (Array.isArray(data)) {
+    resultTitle.textContent = `${data.length} element(s) found`;
     resultDiv.innerHTML = "";
 
-    // Header
-    const countDiv = document.createElement("div");
-    countDiv.style.marginBottom = "10px";
-    countDiv.style.fontWeight = "bold";
-    countDiv.textContent = `Found ${data.length} element(s)`;
-    resultDiv.appendChild(countDiv);
+    // List
 
     // List
     const list = document.createElement("div");
@@ -80,7 +93,7 @@ function showResult(data, type) {
       item.style.borderRadius = "4px";
 
       item.addEventListener("mouseenter", () => {
-        item.style.background = "rgba(0,0,0,0.05)";
+        item.style.background = "var(--item-hover)";
       });
       item.addEventListener("mouseleave", () => {
         item.style.background = "transparent";
@@ -92,16 +105,16 @@ function showResult(data, type) {
       if (index === data.length - 1) item.style.borderBottom = "none";
 
       const tagSpan = document.createElement("span");
-      tagSpan.style.color = "#800080"; // purple for tag
+      tagSpan.style.color = "var(--syntax-tag)";
       tagSpan.style.fontWeight = "bold";
       tagSpan.textContent = el.tagName;
 
       const idSpan = document.createElement("span");
-      idSpan.style.color = "#000080"; // navy for id
+      idSpan.style.color = "var(--syntax-id)";
       if (el.id) idSpan.textContent = `#${el.id}`;
 
       const classSpan = document.createElement("span");
-      classSpan.style.color = "#008080"; // teal for class
+      classSpan.style.color = "var(--syntax-class)";
       let classStr = typeof el.className === "string" ? el.className : "";
       if (classStr) classSpan.textContent = `.${classStr.split(" ").join(".")}`;
 
@@ -114,7 +127,7 @@ function showResult(data, type) {
       Object.entries(el.attributes).forEach(([key, val]) => {
         if (key === "id" || key === "class") return;
         const attrSpan = document.createElement("span");
-        attrSpan.style.color = "#A0522D"; // sienna for attr
+        attrSpan.style.color = "var(--syntax-attr)";
         attrSpan.style.marginLeft = "4px";
         attrSpan.textContent = `${key}="${val}"`;
         item.appendChild(attrSpan);
@@ -125,7 +138,7 @@ function showResult(data, type) {
       // Text content preview
       if (el.text) {
         const textSpan = document.createElement("span");
-        textSpan.style.color = "#333";
+        textSpan.style.color = "var(--syntax-text)";
         textSpan.style.marginLeft = "8px";
         textSpan.style.fontStyle = "italic";
         const truncatedText = el.text.length > 50 ? el.text.substring(0, 50) + "..." : el.text;
@@ -141,13 +154,15 @@ function showResult(data, type) {
 }
 
 function showLoading(message) {
-  resultDiv.className = "result-info";
+  resultWrap.style.display = "block";
+  resultBox.className = "result-box result-info";
+  resultTitle.textContent = "Inspecting…";
+  resultDiv.className = "";
   resultDiv.innerHTML = `<span class="loading"></span>${message}`;
-  resultDiv.style.display = "block";
 }
 
 function hideResult() {
-  resultDiv.style.display = "none";
+  resultWrap.style.display = "none";
 }
 
 export { initPopupUI, showResult, showLoading, hideResult };
@@ -155,4 +170,80 @@ export { initPopupUI, showResult, showLoading, hideResult };
 export function setUIGlobals(ts, li) {
   typeSelect = ts;
   locatorInput = li;
+}
+
+export function showScore({ score, breakdown, suggestions, confidence }) {
+  const panel = document.getElementById("score-panel");
+  const valueEl = document.getElementById("score-value");
+
+  if (!_scoreToggleInit) {
+    _scoreToggleInit = true;
+    const header = document.getElementById("score-header");
+    const details = document.getElementById("score-details");
+    header.addEventListener("click", () => {
+      const open = details.classList.toggle("open");
+      header.classList.toggle("open", open);
+    });
+  }
+  const dotEl = document.getElementById("score-dot");
+  const confidenceEl = document.getElementById("score-confidence");
+  const breakdownEl = document.getElementById("score-breakdown");
+  const suggestionsEl = document.getElementById("score-suggestions");
+
+  const color =
+    score >= 70 ? "var(--green)" : score >= 40 ? "var(--amber)" : "var(--red)";
+
+  valueEl.textContent = score;
+  valueEl.style.color = color;
+  valueEl.style.opacity = confidence === "preview" ? "0.65" : "1";
+  dotEl.style.background = color;
+
+  confidenceEl.textContent =
+    confidence === "verified" ? "Verified score" : "Preview score";
+
+  breakdownEl.innerHTML = "";
+  breakdown.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "score-row";
+
+    const labelEl = document.createElement("span");
+    labelEl.className = "score-row-label";
+    const iconColor =
+      item.delta > 0 ? "var(--green)" : item.delta < 0 ? "var(--red)" : "var(--text3)";
+    const icon = item.delta > 0 ? "✓" : item.delta < 0 ? "✗" : "○";
+    labelEl.innerHTML = `<span style="color:${iconColor};margin-right:5px">${icon}</span>${item.label}`;
+
+    const deltaEl = document.createElement("span");
+    deltaEl.className = "score-row-delta";
+    deltaEl.textContent = item.delta > 0 ? `+${item.delta}` : `${item.delta}`;
+    deltaEl.style.color = iconColor;
+
+    row.appendChild(labelEl);
+    row.appendChild(deltaEl);
+    breakdownEl.appendChild(row);
+  });
+
+  suggestionsEl.innerHTML = "";
+  if (suggestions && suggestions.length > 0) {
+    const title = document.createElement("div");
+    title.className = "score-suggestion-label";
+    title.textContent = "💡 Suggestions";
+    suggestionsEl.appendChild(title);
+    suggestions.forEach((s) => {
+      const item = document.createElement("div");
+      item.className = "score-suggestion-item";
+      item.textContent = `• ${s}`;
+      suggestionsEl.appendChild(item);
+    });
+    suggestionsEl.style.display = "flex";
+  } else {
+    suggestionsEl.style.display = "none";
+  }
+
+  panel.style.display = "block";
+}
+
+export function hideScore() {
+  const panel = document.getElementById("score-panel");
+  if (panel) panel.style.display = "none";
 }

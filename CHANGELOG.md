@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-04-29
+
+### Added
+
+- **Locator Scorer**: A new static + live scoring engine (`src/scorer/locatorScorer.mjs`) that rates every locator from 0–100. Scores are shown in a collapsible panel with a per-rule breakdown (e.g. semantic anchor, dynamic tokens, positional selectors, DOM depth) and actionable improvement suggestions.
+- **Live Score Updates**: Score recalculates immediately on every keystroke (static preview) and updates to a verified score after each inspection round-trip, reflecting actual match count and element metadata.
+- **Inter Font**: Bundled Inter typeface for a cleaner, more readable UI.
+- **DOM Depth Reporting**: Each matched element now reports its depth from `<body>` (`domDepth`), used by the scorer to penalise overly deep structural selectors.
+
+### Changed
+
+- **UI Redesign**: Full visual overhaul of `popup.html` — new layout, improved typography, tokenised CSS variables for syntax colours (`--syntax-tag`, `--syntax-id`, `--syntax-class`, `--syntax-attr`, `--syntax-text`), and a dedicated result header (`resultTitle`) showing match count or status.
+- **Theme System**: Simplified theme toggling in `theme.js` using a new `li-theme` storage key. Icon and `data-theme` attribute now updated through a single `applyTheme()` helper.
+- **Result Display**: Result area refactored into `resultWrap` / `resultBox` / `resultTitle` / `result` hierarchy. Item hover now uses `var(--item-hover)` instead of a hard-coded `rgba` value.
+
 ## [0.1.4] - 2026-04-23
 
 ### Changed
