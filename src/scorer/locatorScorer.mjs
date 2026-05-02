@@ -138,6 +138,19 @@ export function analyzeLocator(locator, type) {
 
   const depth = measureDepth(locator, type);
 
+  const attrValueMatches = locator.match(/\[[\w-]+="([^"]+)"\]/g) || [];
+
+  const hasLongAttrValue = attrValueMatches.some((m) => {
+    const val = m.match(/"([^"]+)"/)?.[1] || "";
+    return val.length > 40;
+  });
+
+  const hasContentLikeValue = attrValueMatches.some((m) => {
+    const val = m.match(/"([^"]+)"/)?.[1] || "";
+    const words = val.split(/\s+/).length;
+    return words > 5 || (val.includes(",") && words > 3);
+  });
+
   return {
     positionalCount,
     dynamicCount,
@@ -148,6 +161,8 @@ export function analyzeLocator(locator, type) {
     hasGlobalXPath,
     isGenericTag,
     hasContainsText,
+    hasLongAttrValue,
+    hasContentLikeValue,
     semanticScore,
     semanticLabel,
     depth,
@@ -164,6 +179,8 @@ function computeScores(analysis, matchCount, isLive) {
     hasGlobalXPath,
     isGenericTag,
     hasContainsText,
+    hasLongAttrValue,
+    hasContentLikeValue,
     semanticScore,
     semanticLabel,
     depth,
@@ -230,6 +247,12 @@ function computeScores(analysis, matchCount, isLive) {
   if (hasContainsText) {
     breakdown.push({ label: "Long text() match (fragile)", delta: -5, category: "stability", severity: "bad", issueType: "contains_text" });
   }
+  if (hasLongAttrValue) {
+    breakdown.push({ label: "Long attribute value (>40 chars, fragile)", delta: -10, category: "stability", severity: "bad", issueType: "long_attr_value" });
+  }
+  if (hasContentLikeValue) {
+    breakdown.push({ label: "Selector uses content description (may change)", delta: -5, category: "stability", severity: "bad", issueType: "content_like_value" });
+  }
 
   // Combo penalty: dynamic class without any semantic anchor
   let comboPenalty = 0;
@@ -265,15 +288,17 @@ function computeScores(analysis, matchCount, isLive) {
     (hasGlobalXPath ? -5 : 0) +
     (isGenericTag ? -10 : 0) +
     (hasContainsText ? -5 : 0) +
-    comboPenalty;
+    comboPenalty +
+    (hasLongAttrValue ? -10 : 0) +
+    (hasContentLikeValue ? -5 : 0);
 
   // Static raw range calculation:
-  // stability: b1[0,10] + b2[0,10] + b3[0,10] + globalXPath[0,-5] + genericTag[0,-10] + containsText[0,-5] + combo[0,-5] = [-25, 30]
+  // stability: b1[0,10] + b2[0,10] + b3[0,10] + globalXPath[0,-5] + genericTag[0,-10]
+  //          + containsText[0,-5] + combo[0,-5] + longAttr[0,-10] + contentLike[0,-5] = [-40, 30]
   // semantic: [0, 20]
   // complexity: [-15, 10]
-  // Total: [-40, 60]
-  // Note: b2 floor is 5 (not 0) when semanticScore >= 12, but RAW_MIN uses worst case.
-  const RAW_MIN = -40;
+  // Total: [-55, 60]
+  const RAW_MIN = -55;
   const RAW_MAX = 60;
   const staticRaw = stabilityScore + semanticScore + complexity;
   const staticScore = Math.max(
@@ -375,6 +400,8 @@ function buildSuggestions(matchCount, breakdown) {
     combo:            { text: "Locator uses dynamic class without semantic anchor — add data-testid", priority: 1 },
     cross_signal:     { text: "Semantic anchor matches multiple elements — verify the attribute value is unique", priority: 1 },
     complexity:       { text: "Selector is too deep — anchor closer to the target element", priority: 3 },
+    long_attr_value:  { text: "Locator uses a long attribute value (>40 chars) — replace with a shorter, stable attribute like data-testid or class", priority: 1 },
+    content_like_value: { text: "Selector relies on content description that may change — use a stable identifier instead", priority: 1 },
   };
 
   const semanticItem = breakdown.find((b) => b.issueType === "semantics");
@@ -407,11 +434,6 @@ export function scoreStatic(locator, type) {
 
 export function scoreLive(locator, type, matchCount, elements) {
   const analysis = analyzeLocator(locator, type);
-  // Use the shallowest matched element as the depth reference
-  if (elements && elements.length > 0) {
-    const depths = elements.map((el) => el.domDepth).filter((d) => d !== undefined);
-    if (depths.length > 0) analysis.depth = Math.min(...depths);
-  }
   const { score, staticScore, liveScore, breakdown, confidence, summary, verdict } =
     computeScores(analysis, matchCount, true);
   const suggestions = buildSuggestions(matchCount, breakdown);

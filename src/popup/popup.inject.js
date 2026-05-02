@@ -1,5 +1,5 @@
 import { nextRequestId, getCurrentRequestId } from "./popup.state.js";
-import { showLoading, showResult, hideResult, showScore, hideScore } from "./popup.ui.js";
+import { showLoading, showResult, hideResult, showScore, hideScore, showSuggestions, hideSuggestions, showSuggestPrompt } from "./popup.ui.js";
 import { scoreLive } from "../scorer/locatorScorer.mjs";
 import {
   getActiveContextId,
@@ -11,6 +11,7 @@ import {
 let inspectionTimeout;
 let typeSelect, locatorInput;
 let _executionToken = 0; // NEW: Concurrency control
+let _awaitingElementSelection = false;
 
 function initPopupInspection() {
   if (typeSelect && locatorInput && locatorInput.value.trim()) {
@@ -51,6 +52,7 @@ async function triggerInspection() {
   if (!locator) {
     hideResult();
     hideScore();
+    hideSuggestions();
     clearPageOverlays();
     return;
   }
@@ -110,6 +112,7 @@ async function triggerInspection() {
             "engine/xpathEngine.js",
             "engine/playwrightEngine.js",
             "engine/smartLocatorEngine.js",
+            "engine/candidateGenerator.js",
             "engine/injector.js",
           ],
           world: "ISOLATED",
@@ -133,6 +136,7 @@ async function triggerInspection() {
 
   const requestId = nextRequestId();
   const executionToken = ++_executionToken; // NEW: Track this execution
+  _awaitingElementSelection = false; // cancel any pending element-click selection
 
   await chrome.scripting.executeScript({
     target: { tabId: tab.id, frameIds: [frameId] }, // NEW: Use frameIds
@@ -185,13 +189,24 @@ async function triggerInspection() {
 
     if (r.error) {
       showResult(`${r.error}\n\nContext: ${contextLabel}`, "error");
-      // keep static preview score — locator is syntactically invalid
+      hideSuggestions();
     } else if (r.count === 0) {
       showResult(`No elements found\n\nContext: ${contextLabel}`, "error");
       showScore(scoreLive(locator, type, 0, []));
+      hideSuggestions();
     } else {
       showResult(r.elementsInfo, "success");
-      showScore(scoreLive(locator, type, r.count, r.elementsInfo));
+      const liveResult = scoreLive(locator, type, r.count, r.elementsInfo);
+      showScore(liveResult);
+      if (liveResult.score < 80) {
+        if (r.count === 1) {
+          triggerSuggest(tab.id, frameId, 0, type);
+        } else {
+          showSuggestPrompt(`${r.count} elements matched — use "Pick Element" to inspect a specific one`);
+        }
+      } else {
+        hideSuggestions();
+      }
     }
   } catch (err) {
     showResult(`Inspection failed: ${err.message}`, "error");
@@ -230,6 +245,149 @@ async function triggerHighlight(index) {
     .catch(() => {});
 }
 
+async function triggerSuggest(tabId, frameId, elementIndex, locatorType) {
+  const executionToken = _executionToken;
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId, frameIds: [frameId] },
+      func: (idx, type) => {
+        const el = window.__lastMatchedElements?.[idx];
+        if (!el) return { suggestions: [], message: "Element not found" };
+        return window.__suggestLocators(el, type);
+      },
+      args: [elementIndex, locatorType || "smart"],
+      world: "ISOLATED",
+    });
+    if (executionToken !== _executionToken) return;
+    const data = results?.[0]?.result;
+    if (!data) return;
+    _applyFlatSuggestResult(data);
+  } catch (err) {
+    console.error("[triggerSuggest] Error:", err);
+  }
+}
+
+function _applyFlatSuggestResult(data) {
+  if (!data.suggestions || data.suggestions.length === 0) {
+    showSuggestPrompt(data.message || "No better locator available — consider adding data-testid to this element");
+    return;
+  }
+  const scored = data.suggestions.map((s) => ({
+    ...s,
+    ...scoreLive(s.locator, s.locatorType || "smart", s.matchCount, []),
+  }));
+  scored.sort((a, b) => b.score - a.score);
+  showSuggestions(scored.slice(0, 3), data.message);
+}
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === "locator-suggest-result" && _awaitingElementSelection) {
+    _awaitingElementSelection = false;
+    _resetPickModeUI();
+    _applyFlatSuggestResult(message.data || {});
+  }
+});
+
+function _resetPickModeUI() {
+  const pickBtn = document.getElementById("pickBtn");
+  const pickStatus = document.getElementById("pickStatus");
+  const pickLabel = document.getElementById("pickLabel");
+  if (pickBtn) pickBtn.classList.remove("active");
+  if (pickStatus) pickStatus.classList.remove("visible");
+  if (pickLabel) pickLabel.textContent = "Pick Element";
+}
+
+async function _cancelPickOnPage() {
+  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  const tab = tabs[0];
+  if (!tab) return;
+  const frameId = getFrameIdFromContextId(getActiveContextId());
+  chrome.scripting.executeScript({
+    target: { tabId: tab.id, frameIds: [frameId] },
+    func: () => {
+      if (typeof window.__disableElementSelection === "function") {
+        window.__disableElementSelection();
+      }
+    },
+    world: "ISOLATED",
+  }).catch(() => {});
+}
+
+export async function triggerPickElement() {
+  const pickBtn = document.getElementById("pickBtn");
+  if (!pickBtn) return;
+
+  if (pickBtn.classList.contains("active")) {
+    _awaitingElementSelection = false;
+    _resetPickModeUI();
+    await _cancelPickOnPage();
+    return;
+  }
+
+  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  const tab = tabs[0];
+  if (!tab) return;
+
+  const contextId = getActiveContextId();
+  const frameId = getFrameIdFromContextId(contextId);
+
+  // Ensure engines loaded
+  let engineReady = false;
+  for (let i = 0; i < 3; i++) {
+    const check = await chrome.scripting
+      .executeScript({
+        target: { tabId: tab.id, frameIds: [frameId] },
+        func: () => typeof window.__suggestLocators,
+        world: "ISOLATED",
+      })
+      .catch(() => null);
+    if (check?.[0]?.result === "function") { engineReady = true; break; }
+    if (i === 0) {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id, frameIds: [frameId] },
+        files: [
+          "engine/cssEngine.js",
+          "engine/xpathEngine.js",
+          "engine/playwrightEngine.js",
+          "engine/smartLocatorEngine.js",
+          "engine/candidateGenerator.js",
+          "engine/injector.js",
+        ],
+        world: "ISOLATED",
+      }).catch(() => {});
+      await new Promise((r) => setTimeout(r, 200));
+    } else {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  }
+
+  if (!engineReady) {
+    showSuggestPrompt("Could not load inspection engine. Try refreshing the page.");
+    return;
+  }
+
+  // Activate pick mode UI
+  const pickLabel = document.getElementById("pickLabel");
+  const pickStatus = document.getElementById("pickStatus");
+  pickBtn.classList.add("active");
+  if (pickStatus) pickStatus.classList.add("visible");
+  if (pickLabel) pickLabel.textContent = "Cancel Pick";
+  _awaitingElementSelection = true;
+
+  chrome.scripting.executeScript({
+    target: { tabId: tab.id, frameIds: [frameId] },
+    func: (locatorType) => {
+      if (typeof window.__enableElementSelection !== "function") return;
+      window.__enableElementSelection((el) => {
+        const result = window.__suggestLocators(el, locatorType);
+        chrome.runtime.sendMessage({ type: "locator-suggest-result", data: result }).catch(() => {});
+      });
+    },
+    args: [typeSelect.value],
+    world: "ISOLATED",
+  }).catch(() => {});
+}
+
 export {
   initPopupInspection,
   debounceInspection,
@@ -237,4 +395,5 @@ export {
   clearPageOverlays,
   setInjectionGlobals,
   triggerHighlight,
+  triggerSuggest,
 };
