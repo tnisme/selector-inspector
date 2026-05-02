@@ -14,6 +14,8 @@ Locator Inspector lets you:
 - **Deep search into Shadow DOM** seamlessly across CSS, Playwright, and Smart Locators
 - See matches highlighted on the page with numbered badges
 - **Score your locators** (0–100) with a per-rule breakdown and actionable suggestions — updated live as you type and verified after each inspection
+- **Pick Element** — click any element on the page with a DevTools-style hover highlight and instantly receive ranked locator suggestions
+- **Type-aware suggestions** — suggestions are generated in the format of your selected type (CSS, XPath, Playwright, or Smart), validated against that type's engine, and scored accordingly
 
 **Intended use**: Rapid validation of selectors during test development. Not a replacement for running actual test code.
 
@@ -54,9 +56,10 @@ npm run build
 1. Click the extension icon → side panel opens
 2. Select locator type: **CSS**, **XPath**, **Playwright**, or **Smart**
 3. Select your target **DOM Context** (Target the Top Document or choose a specific iframe)
-4. Enter your locator expression and press **Enter** to inspect
+4. Enter your locator expression and press **Enter** to inspect, or click **Pick Element** to click an element directly on the page
 5. Matched elements highlight on the page with numbered badges
-6. Adjust and test until you have the right selector
+6. If the score is below 80, the suggestion panel surfaces ranked alternative locators in your selected type
+7. Click a suggestion to apply it and re-inspect instantly
 
 ---
 
@@ -105,6 +108,41 @@ Useful for readability during test development. Evaluates left-to-right with con
 
 ---
 
+## Locator Suggestions
+
+When the live score falls below 80, the suggestion panel opens automatically with ranked alternative locators.
+
+### Pick Element
+
+Click **Pick Element** to enter pick mode. While active:
+
+- Hover over the page to see a **blue highlight box** and a floating label showing `tag#id.class  W × H` (identical to DevTools element inspection)
+- Click any element to instantly receive suggestions for it
+- Click **Cancel Pick** (or the button again) to exit without selecting
+
+### Type-Aware Suggestions
+
+Suggestions are generated in the format of the currently selected locator type:
+
+| Type | Example suggestion |
+|---|---|
+| **CSS** | `[data-testid="submit-btn"]`, `button[type="submit"]:enabled` |
+| **XPath** | `//*[@data-testid="submit-btn"]`, `//button[normalize-space()="Submit"]` |
+| **Playwright** | `getByTestId("submit-btn")`, `getByRole("button")` |
+| **Smart** | `[data-testid="submit-btn"]:visible`, `button:text-is("Submit")` |
+
+Clicking a suggestion applies it to the locator field **and** updates the type dropdown to match, so inspection runs in the correct mode.
+
+### How Suggestions Are Generated
+
+1. **Candidate generation** — attributes are extracted from the element and mapped to type-specific locator patterns (test ids, roles, aria labels, text, name, placeholder, class, etc.)
+2. **Validation** — each candidate is tested against the live DOM using the appropriate engine; only candidates that actually match the target element are kept
+3. **Pseudo narrowing** — non-unique candidates are retried with `:visible`, `:enabled`, `:checked` appended (smart/css modes) to find a unique match automatically
+4. **Ancestor narrowing** — if no unique locator is found, the engine walks up to 5 ancestor levels looking for a stable anchor (`[data-testid]`, `#id`, `[role]`, `tag.class`) and combines it with the candidate: e.g. `[data-testid="modal"] button`
+5. **Scoring & ranking** — each suggestion is scored using the same 0–100 engine as the main locator field, with unique matches ranked first
+
+---
+
 ## How It Works
 
 ### Architecture Overview
@@ -114,27 +152,30 @@ Extension UI (Chrome side panel)
     ↓
 Content script injector (background.js)
     ↓
-Page context (MAIN world isolation)
+Page context (ISOLATED world)
     ├── CSS engine (document.querySelectorAll)
     ├── XPath engine (document.evaluate)
     ├── Playwright emulation engine
     ├── Smart locator resolver
-    └── Overlay renderer (visual highlights)
+    ├── Candidate generator (type-aware)
+    ├── Suggestion engine (validate + narrow + score)
+    └── Overlay renderer (visual highlights + pick mode)
 ```
 
 ### Execution Flow
 
 1. User opens extension → background service worker opens side panel
 2. Panel sends `"panel-opened"` message → background injects content scripts
-3. Content scripts load all four locator engines into page's MAIN world (not isolated)
-4. User enters locator expression → UI sends to page context
+3. Content scripts load all engines into the page's ISOLATED world
+4. User enters locator expression (or picks an element) → UI sends to page context
 5. Appropriate engine evaluates expression against live DOM
 6. Matching elements highlighted with badges for 5 seconds
-7. User closes panel → cleanup removes overlays and listeners
+7. If score < 80, suggestion engine runs and surfaces ranked alternatives
+8. User closes panel → cleanup removes overlays and listeners
 
 ### Key Constraints
 
-- **MAIN world injection**: Engines run in page context (not isolated sandbox) to access real DOM and render overlays. This means page JavaScript can see `window.__locatorEngines` and `window.__locatorInspect()`.
+- **ISOLATED world injection**: Engines run in Chrome's isolated script world, separate from page JavaScript. Page scripts cannot interfere with `window.__locatorEngines` or `window.__locatorInspect()`.
 - **300ms debounce**: Reduces excessive DOM queries while typing; manual `Ctrl+Enter` bypasses this.
 - **5-second highlights**: Auto-cleanup prevents UI clutter; type a new locator to re-highlight.
 - **Single active tab**: Only the currently active tab is inspected; switching tabs requires re-activation.
@@ -155,6 +196,10 @@ Page context (MAIN world isolation)
 - [x] Persistence of last locator/type
 - [x] Light/dark theme toggle
 - [x] Locator quality scoring (0–100) with breakdown and suggestions
+- [x] Pick Element mode with DevTools-style hover highlight
+- [x] Type-aware locator suggestions (CSS, XPath, Playwright, Smart)
+- [x] Pseudo-selector auto-narrowing (`:visible`, `:enabled`, `:checked`)
+- [x] Ancestor context narrowing for elements with no unique own attributes
 
 ### What We Do NOT Support
 
@@ -177,9 +222,9 @@ The extension has no Node.js runtime or bundler. Emulating Playwright syntax in 
 
 Prevents excessive DOM queries while typing. **Trade-off**: Less responsive than instant evaluation. Keyboard shortcut available for manual trigger.
 
-### Why MAIN World Injection?
+### Why ISOLATED World Injection?
 
-Overlay rendering requires direct DOM access. Isolated world scripts cannot manipulate page DOM. **Trade-off**: Page scripts can interfere with the extension; no XSS protection.
+Engines run in Chrome's ISOLATED world so page scripts cannot interfere with `window.__locatorEngines` or the overlay state. **Trade-off**: Slightly more complex communication between the popup and page context via `chrome.scripting.executeScript`.
 
 ### Why Single Active Tab?
 
@@ -228,6 +273,10 @@ Prevents overlays from accumulating if user forgets them. **Trade-off**: Cannot 
 ---
 
 ## Release & Versioning
+
+### Version 0.3.0 (May 2026)
+
+**Status**: Feature release. Adds the Pick Element button with DevTools-style hover highlight, type-aware locator suggestions (CSS/XPath/Playwright/Smart), pseudo-selector auto-narrowing, and ancestor context narrowing. Breaking changes possible without notice.
 
 ### Version 0.2.0 (Apr 2026)
 

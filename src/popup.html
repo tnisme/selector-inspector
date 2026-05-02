@@ -487,8 +487,6 @@
         color: #fff;
       }
 
-      .title-wrap {
-      }
       .title {
         font-size: 14px;
         font-weight: 600;
@@ -598,16 +596,19 @@
 
       .refresh-btn {
         height: 36px;
-        width: 36px;
-        padding: 0;
+        padding: 0 12px;
         background: var(--surface2);
         border: 1px solid var(--border);
         border-radius: var(--radius-sm);
+        font-family: var(--font-ui);
+        font-size: 12px;
+        font-weight: 500;
         color: var(--text2);
         cursor: pointer;
+        white-space: nowrap;
         display: flex;
         align-items: center;
-        justify-content: center;
+        gap: 5px;
         transition:
           background 0.15s,
           border-color 0.15s,
@@ -666,9 +667,70 @@
         margin: 0 16px;
       }
 
+      /* ── Pick button ── */
+      .pick-btn {
+        width: 100%;
+        padding: 9px 14px;
+        background: var(--surface2);
+        color: var(--text2);
+        border: 1px dashed var(--border2);
+        border-radius: var(--radius-sm);
+        font-family: var(--font-ui);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: crosshair;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        transition:
+          background 0.15s,
+          border-color 0.15s,
+          color 0.15s,
+          box-shadow 0.15s;
+        letter-spacing: 0.01em;
+      }
+      .pick-btn:hover:not(:disabled) {
+        background: var(--accent-bg);
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .pick-btn.active {
+        background: var(--accent-bg);
+        border: 1.5px solid var(--accent);
+        color: var(--accent);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+        animation: pickPulse 1.8s ease-in-out infinite;
+      }
+      .pick-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      @keyframes pickPulse {
+        0%, 100% {
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+        }
+        50% {
+          box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 5%, transparent);
+        }
+      }
+      .pick-status {
+        font-size: 11px;
+        color: var(--accent);
+        text-align: center;
+        font-style: italic;
+        display: none;
+      }
+      .pick-status.visible {
+        display: block;
+      }
+
       /* ── Run button ── */
       .run-wrap {
         padding: 12px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
       }
 
       .run-btn {
@@ -952,6 +1014,104 @@
           transform: translateY(0);
         }
       }
+
+      /* ── Suggestion panel ── */
+      .suggest-wrap {
+        padding: 0 16px 14px;
+        display: none;
+      }
+      .suggest-card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+      }
+      .suggest-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        background: var(--surface2);
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text2);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .suggest-item {
+        padding: 8px 12px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .suggest-item:first-child {
+        border-top: none;
+      }
+      .suggest-locator {
+        font-family: var(--font-code);
+        font-size: 11.5px;
+        color: var(--accent);
+        cursor: pointer;
+        word-break: break-all;
+        line-height: 1.5;
+        transition: opacity 0.15s;
+      }
+      .suggest-locator:hover {
+        opacity: 0.75;
+        text-decoration: underline;
+      }
+      .suggest-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .suggest-score {
+        font-size: 11px;
+        font-weight: 600;
+        font-family: var(--font-code);
+      }
+      .suggest-verdict {
+        font-size: 11px;
+        color: var(--text3);
+        flex: 1;
+      }
+      .suggest-copy {
+        font-size: 11px;
+        padding: 2px 8px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: var(--surface2);
+        color: var(--text2);
+        cursor: pointer;
+        font-family: var(--font-ui);
+        transition: background 0.15s, color 0.15s;
+        flex-shrink: 0;
+      }
+      .suggest-copy:hover {
+        background: var(--border);
+        color: var(--text);
+      }
+      .suggest-prompt {
+        padding: 10px 12px;
+        font-size: 12px;
+        color: var(--text2);
+        font-style: italic;
+        border-top: 1px solid var(--border);
+      }
+      .suggest-prompt:first-child {
+        border-top: none;
+      }
+      .suggest-note {
+        padding: 6px 12px;
+        font-size: 11px;
+        color: var(--amber);
+        border-top: 1px solid var(--border);
+        font-style: italic;
+      }
+      .suggest-note:first-child {
+        border-top: none;
+      }
     </style>
   </head>
   <body>
@@ -1051,8 +1211,8 @@
                   title="Refresh contexts"
                 >
                   <svg
-                    width="13"
-                    height="13"
+                    width="12"
+                    height="12"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -1063,6 +1223,7 @@
                     <polyline points="23 4 23 10 17 10"></polyline>
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                   </svg>
+                  Refresh
                 </button>
               </div>
             </div>
@@ -1087,8 +1248,28 @@
 
         <div class="divider"></div>
 
-        <!-- Run button -->
+        <!-- Run button + Pick button -->
         <div class="run-wrap">
+          <!-- Pick Element -->
+          <button class="pick-btn" id="pickBtn" title="Click to activate, then click any element on the page">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M4 4l4.5 16 3.5-7 7-3.5L4 4z"></path>
+              <line x1="14.5" y1="14.5" x2="20" y2="20"></line>
+            </svg>
+            <span id="pickLabel">Pick Element</span>
+          </button>
+          <div class="pick-status" id="pickStatus">Hover over the page and click an element…</div>
+
+          <!-- Inspect -->
           <button class="run-btn" id="runBtn">
             <div class="spinner" id="spinner"></div>
             <svg
@@ -1143,6 +1324,14 @@
                 style="display: none"
               ></div>
             </div>
+          </div>
+        </div>
+
+        <!-- Suggestion panel -->
+        <div class="suggest-wrap" id="suggest-panel">
+          <div class="suggest-card">
+            <div class="suggest-header">💡 Better locators</div>
+            <div id="suggest-list"></div>
           </div>
         </div>
 

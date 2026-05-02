@@ -58,6 +58,7 @@ async function injectContentScript(tabId) {
             "engine/xpathEngine.js",
             "engine/playwrightEngine.js",
             "engine/smartLocatorEngine.js",
+            "engine/candidateGenerator.js",
             "engine/injector.js",
           ],
           world: "ISOLATED",
