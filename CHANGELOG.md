@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-05-02
+
+### Added
+
+- **Pick Element Button**: A dedicated "Pick Element" button lets you click any element on the live page to instantly receive locator suggestions, without typing anything first. Activating pick mode shows a dashed-border animated button and a status hint; clicking again cancels it.
+- **DevTools-style Hover Highlight**: While in pick mode, hovering over the page shows a blue highlight box around the element under the cursor, with a floating info label displaying the tag name, id, class, and dimensions — matching the feel of browser DevTools element inspection.
+- **Type-Aware Locator Suggestions**: The locator suggestion engine now generates candidates in the format matching the user's selected type. Selecting **CSS** produces pure CSS selectors; **XPath** produces XPath expressions (`//*[@data-testid="..."]`, `//tag[normalize-space()="..."]`); **Playwright** produces API calls (`getByTestId`, `getByRole`, `getByText`); **Smart** retains the previous behavior with Playwright pseudos (`:text-is()`, `:has-text()`, `:visible`).
+- **Pseudo-Selector Auto-Narrowing**: When a candidate locator matches multiple elements, the suggestion engine automatically tries appending `:visible`, `:enabled`, `:checked` (smart mode) or `:enabled`, `:checked` (css mode) — including combinations — to find a unique match without user intervention.
+- **Ancestor Context Narrowing**: When no unique locator can be found from the element's own attributes, the engine walks up the DOM (up to 5 levels) to find a stable ancestor anchor (`[data-testid]`, `#id`, `[role]`, or `tag.class`) and generates narrowed locators like `[data-testid="parent"] button`. XPath type uses XPath ancestor chaining (`//*[@data-testid="parent"]//button`).
+
+### Changed
+
+- **Suggestion Scoring**: Each suggested locator is now scored using the type it was generated for (CSS, XPath, Playwright, Smart) instead of always scoring as smart. Clicking a suggestion also sets the type dropdown to match the suggestion's format.
+- **Multi-Match Handling**: When a locator matches more than one element and the score is below 80, the panel now shows a prompt directing the user to use "Pick Element" to inspect a specific one, rather than silently discarding suggestions.
+
 ## [0.2.0] - 2026-04-29
 
 ### Added

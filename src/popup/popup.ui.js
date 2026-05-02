@@ -6,6 +6,96 @@ import {
 import { debounceInspection, triggerInspection, triggerHighlight } from "./popup.inject.js";
 import { scoreStatic } from "../scorer/locatorScorer.mjs";
 
+export function showSuggestions(suggestions, message) {
+  const panel = document.getElementById("suggest-panel");
+  if (!panel) return;
+  const list = document.getElementById("suggest-list");
+  if (!list) return;
+
+  if (!suggestions || suggestions.length === 0) {
+    hideSuggestions();
+    return;
+  }
+
+  list.innerHTML = "";
+
+  if (message) {
+    const note = document.createElement("div");
+    note.className = "suggest-note";
+    note.textContent = message;
+    list.appendChild(note);
+  }
+
+  suggestions.forEach((s) => {
+    const item = document.createElement("div");
+    item.className = "suggest-item";
+
+    const locatorEl = document.createElement("div");
+    locatorEl.className = "suggest-locator";
+    locatorEl.textContent = s.locator;
+    locatorEl.title = "Click to use this locator";
+    locatorEl.addEventListener("click", () => {
+      const applyType = s.locatorType || "smart";
+      locatorInput.value = s.locator;
+      typeSelect.value = applyType;
+      saveLocatorValue(s.locator);
+      saveLocatorType(applyType);
+      triggerInspection();
+    });
+
+    const meta = document.createElement("div");
+    meta.className = "suggest-meta";
+
+    const scoreColor = s.score >= 70 ? "var(--green)" : s.score >= 40 ? "var(--amber)" : "var(--red)";
+    const badge = document.createElement("span");
+    badge.className = "suggest-score";
+    badge.textContent = `Score ${s.score}`;
+    badge.style.color = scoreColor;
+
+    const verdict = document.createElement("span");
+    verdict.className = "suggest-verdict";
+    verdict.textContent = s.verdict || "";
+
+    const copyBtn = document.createElement("button");
+    copyBtn.className = "suggest-copy";
+    copyBtn.textContent = "Copy";
+    copyBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText(s.locator).catch(() => {});
+      copyBtn.textContent = "Copied!";
+      setTimeout(() => { copyBtn.textContent = "Copy"; }, 1500);
+    });
+
+    meta.appendChild(badge);
+    meta.appendChild(verdict);
+    meta.appendChild(copyBtn);
+    item.appendChild(locatorEl);
+    item.appendChild(meta);
+    list.appendChild(item);
+  });
+
+  panel.style.display = "block";
+}
+
+export function hideSuggestions() {
+  const panel = document.getElementById("suggest-panel");
+  if (panel) panel.style.display = "none";
+}
+
+export function showSuggestPrompt(countOrMsg) {
+  const panel = document.getElementById("suggest-panel");
+  if (!panel) return;
+  const list = document.getElementById("suggest-list");
+  if (!list) return;
+
+  const msg = typeof countOrMsg === "number"
+    ? `Matched ${countOrMsg} elements. Click one on the page to get suggestions.`
+    : (countOrMsg || "No suggestions available.");
+
+  list.innerHTML = `<div class="suggest-prompt">${msg}</div>`;
+  panel.style.display = "block";
+}
+
 let resultWrap, resultBox, resultTitle, resultDiv;
 let typeSelect, locatorInput;
 let _scoreToggleInit = false;

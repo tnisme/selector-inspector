@@ -8,6 +8,7 @@ import {
 import {
   initPopupInspection,
   setInjectionGlobals,
+  triggerPickElement,
 } from "./popup.inject.js";
 import {
   initContextUI,
@@ -32,6 +33,9 @@ document.addEventListener("DOMContentLoaded", () => {
   initPopupUI();
   initPopupInspection();
   initContextUI(); // NEW: Initialize context management
+
+  const pickBtn = document.getElementById("pickBtn");
+  if (pickBtn) pickBtn.addEventListener("click", triggerPickElement);
 });
 
 // Notify background when panel is closing
