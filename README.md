@@ -16,6 +16,8 @@ Locator Inspector lets you:
 - **Score your locators** (0–100) with a per-rule breakdown and actionable suggestions — updated live as you type and verified after each inspection
 - **Pick Element** — click any element on the page with a DevTools-style hover highlight and instantly receive ranked locator suggestions
 - **Type-aware suggestions** — suggestions are generated in the format of your selected type (CSS, XPath, Playwright, or Smart), validated against that type's engine, and scored accordingly
+- **DevTools Panel** — open as a full Chrome DevTools panel (DevTools → "Locator Inspector" tab) with the same UI as the side panel
+- **Elements Panel Sidebar** — a "Locators" pane inside the DevTools Elements panel: select any element to see scored, type-tagged locator suggestions, copy them, or send them directly to the panel for inspection
 
 **Intended use**: Rapid validation of selectors during test development. Not a replacement for running actual test code.
 
@@ -33,7 +35,7 @@ Locator Inspector lets you:
 ### From Release (Recommended)
 
 1. Go to [Releases](https://github.com/tnisme/selector-inspector/releases)
-2. Download the latest `.zip` file (e.g., `locator-inspector-0.1.0.zip`)
+2. Download the latest `.zip` file (e.g., `locator-inspector-0.4.0.zip`)
 3. Extract to any folder (e.g., `~/Downloads/locator-inspector/`)
 4. Open Chrome → `chrome://extensions/` → Enable **Developer mode** (top right)
 5. Click **Load unpacked** → Select the extracted folder
@@ -53,6 +55,7 @@ npm run build
 
 ## Quick Start
 
+### Side Panel
 1. Click the extension icon → side panel opens
 2. Select locator type: **CSS**, **XPath**, **Playwright**, or **Smart**
 3. Select your target **DOM Context** (Target the Top Document or choose a specific iframe)
@@ -60,6 +63,15 @@ npm run build
 5. Matched elements highlight on the page with numbered badges
 6. If the score is below 80, the suggestion panel surfaces ranked alternative locators in your selected type
 7. Click a suggestion to apply it and re-inspect instantly
+
+### DevTools Panel
+1. Open Chrome DevTools (`F12` / `Cmd+Option+I`) → click the **"Locator Inspector"** tab
+2. The same UI as the side panel is available here — type locators and inspect against the DevTools-inspected page
+
+### Elements Panel Sidebar
+1. Open Chrome DevTools → **Elements** panel → click the **"Locators"** tab in the right sidebar
+2. Select any element in the Elements tree → ranked locator suggestions appear instantly
+3. Click a selector text to copy it; use the → button to send it to the Locator Inspector panel; use the eye button to highlight matching elements on the page
 
 ---
 
@@ -148,9 +160,16 @@ Clicking a suggestion applies it to the locator field **and** updates the type d
 ### Architecture Overview
 
 ```
-Extension UI (Chrome side panel)
+Extension UI
+  ├── Chrome Side Panel (popup.html)          ← sendMessage lifecycle
+  └── Chrome DevTools
+        ├── DevTools Panel (popup.html)        ← port: devtools-panel
+        └── Elements Sidebar (sidebar.html)    ← port: sidebar-pane
+              ↑ data from devtools.js          ← port: devtools-sidebar
     ↓
-Content script injector (background.js)
+Background service worker (background.js)
+    ↓
+Content script injector
     ↓
 Page context (ISOLATED world)
     ├── CSS engine (document.querySelectorAll)
@@ -164,6 +183,7 @@ Page context (ISOLATED world)
 
 ### Execution Flow
 
+#### Side Panel
 1. User opens extension → background service worker opens side panel
 2. Panel sends `"panel-opened"` message → background injects content scripts
 3. Content scripts load all engines into the page's ISOLATED world
@@ -172,6 +192,16 @@ Page context (ISOLATED world)
 6. Matching elements highlighted with badges for 5 seconds
 7. If score < 80, suggestion engine runs and surfaces ranked alternatives
 8. User closes panel → cleanup removes overlays and listeners
+
+#### DevTools Panel / Elements Sidebar
+1. `devtools.html` loads `devtools.js` → creates the "Locator Inspector" panel and "Locators" Elements sidebar pane
+2. `devtools.js` connects to background via `devtools-sidebar` port, sends `INIT { tabId }`
+3. Background injects content scripts into the inspected tab
+4. User selects an element in the Elements panel → `devtools.js` runs `ANALYSIS_CODE` via `inspectedWindow.eval` (main world) to get basic suggestions + element XPath path
+5. `devtools.js` sends `GET_SMART_SUGGESTIONS` to background → background executes `window.__suggestLocators` in ISOLATED world using the XPath to re-locate the element → returns smart suggestions
+6. Merged, deduplicated, re-scored suggestions are sent as `SIDEBAR_UPDATE` → background relays to `sidebar.html` via `sidebar-pane` port
+7. "Use in Panel" from sidebar → background forwards to panel port as `ELEMENT_SUGGESTIONS`
+8. "Highlight" from sidebar → background executes `window.__locatorInspect` in ISOLATED world
 
 ### Key Constraints
 
@@ -200,6 +230,8 @@ Page context (ISOLATED world)
 - [x] Type-aware locator suggestions (CSS, XPath, Playwright, Smart)
 - [x] Pseudo-selector auto-narrowing (`:visible`, `:enabled`, `:checked`)
 - [x] Ancestor context narrowing for elements with no unique own attributes
+- [x] Chrome DevTools panel (same popup UI as a DevTools tab)
+- [x] Elements panel "Locators" sidebar pane (per-element suggestions, copy, highlight, "Use in Panel")
 
 ### What We Do NOT Support
 
@@ -274,6 +306,10 @@ Prevents overlays from accumulating if user forgets them. **Trade-off**: Cannot 
 
 ## Release & Versioning
 
+### Version 0.4.0 (Jun 2026)
+
+**Status**: Feature release. Adds the Chrome DevTools panel (popup UI reused as a DevTools tab) and the Elements panel "Locators" sidebar pane (per-element locator suggestions with scoring, filtering, copy, highlight, and "Use in Panel"). Background extended with three new port connections and pending-data queuing.
+
 ### Version 0.3.0 (May 2026)
 
 **Status**: Feature release. Adds the Pick Element button with DevTools-style hover highlight, type-aware locator suggestions (CSS/XPath/Playwright/Smart), pseudo-selector auto-narrowing, and ancestor context narrowing. Breaking changes possible without notice.
@@ -316,13 +352,14 @@ No semantic versioning guarantees; features may be added/removed in point releas
 
 ### Permissions
 
-| Permission   | Purpose                     |
-| ------------ | --------------------------- |
-| `scripting`  | Inject engines into pages   |
-| `activeTab`  | Read active tab info        |
-| `storage`    | Save locator type and value |
-| `sidePanel`  | Display side panel UI       |
-| `<all_urls>` | Inject into any website     |
+| Permission      | Purpose                                           |
+| --------------- | ------------------------------------------------- |
+| `scripting`     | Inject engines into pages                         |
+| `activeTab`     | Read active tab info                              |
+| `storage`       | Save locator type and value                       |
+| `sidePanel`     | Display side panel UI                             |
+| `webNavigation` | Detect page navigations for DevTools integration  |
+| `<all_urls>`    | Inject into any website                           |
 
 ### Storage
 

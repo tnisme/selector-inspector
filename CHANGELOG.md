@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-06-03
+
+### Added
+
+- **DevTools Panel**: Locator Inspector is now also available as a full Chrome DevTools panel (open DevTools → "Locator Inspector" tab). The panel reuses `popup.html` as-is. Opening it connects via a persistent port (`devtools-panel`) so the panel survives Manifest V3 service-worker restarts.
+- **Elements Panel Sidebar Pane ("Locators")**: A "Locators" pane appears in the Chrome DevTools Elements panel. Selecting any element instantly shows ranked locator suggestions without leaving the Elements panel. Each row shows a type badge (PW / CSS / XP / SRT), a score pill (0–100), a match count indicator, and a color-coded quality border (green / yellow / red).
+- **Smart Suggestions in Sidebar**: The sidebar merges basic attribute-derived suggestions (test id, role, id, aria-label, text, tag+class, absolute XPath) with real engine-validated Smart suggestions fetched from the isolated world via `window.__suggestLocators`. Results are deduplicated and re-scored before rendering.
+- **"Use in Panel" from Sidebar**: The → button on each sidebar suggestion sends the locator and its type directly to the Locator Inspector DevTools panel for immediate inspection and highlighting.
+- **Highlight from Sidebar**: The eye-icon button triggers `window.__locatorInspect` in the page to highlight matching elements visually, identical to a normal inspection round-trip.
+- **Filter Bar in Sidebar**: When suggestions span multiple types, a filter bar appears so you can show only CSS, XPath, Playwright, or Smart suggestions.
+- **Auto-Reinject on Navigation**: `devtools.js` listens to `chrome.devtools.network.onNavigated` and sends a `REINJECT` message to the background to re-inject content scripts after the inspected page navigates.
+
+### Changed
+
+- **Background Service Worker**: Extended to handle three new port connections — `devtools-panel` (popup inside DevTools), `devtools-sidebar` (devtools.js management port), and `sidebar-pane` (sidebar.html) — with pending-data queuing so data sent before `sidebar.html` finishes loading is flushed on connect.
+- **Popup Dual-Mode Detection**: `popup.js` now detects whether it is running inside DevTools (`chrome.devtools` available) or as a side panel, and switches lifecycle messaging accordingly: port-based `INIT` for DevTools mode vs. `chrome.runtime.sendMessage` for side-panel mode.
+
 ## [0.3.0] - 2026-05-02
 
 ### Added

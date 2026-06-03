@@ -127,6 +127,17 @@ function initPopupUI() {
     debounceInspection();
   });
 
+  const copyLocatorBtn = document.getElementById("copyLocatorBtn");
+  if (copyLocatorBtn) {
+    copyLocatorBtn.addEventListener("click", () => {
+      const val = locatorInput.value;
+      if (!val) return;
+      navigator.clipboard.writeText(val).catch(() => {});
+      copyLocatorBtn.textContent = "Copied!";
+      setTimeout(() => { copyLocatorBtn.textContent = "Copy"; }, 1500);
+    });
+  }
+
   locatorInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       if (e.ctrlKey || e.metaKey) {

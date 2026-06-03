@@ -1112,6 +1112,23 @@
       .suggest-note:first-child {
         border-top: none;
       }
+
+      .copy-locator-btn {
+        font-size: 11px;
+        padding: 2px 8px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: var(--surface2);
+        color: var(--text2);
+        cursor: pointer;
+        font-family: var(--font-ui);
+        transition: background 0.15s, color 0.15s;
+        flex-shrink: 0;
+      }
+      .copy-locator-btn:hover {
+        background: var(--border);
+        color: var(--text);
+      }
     </style>
   </head>
   <body>
@@ -1237,7 +1254,10 @@
 
           <!-- Locator expression -->
           <div class="field">
-            <label class="field-label" for="locator">Locator Expression</label>
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <label class="field-label" for="locator">Locator Expression</label>
+              <button class="copy-locator-btn" id="copyLocatorBtn" title="Copy locator to clipboard">Copy</button>
+            </div>
             <textarea
               id="locator"
               placeholder="e.g. #submit-btn, //button[@type='submit']"

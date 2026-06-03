@@ -8,7 +8,8 @@
     "eslint": "^9.39.2",
     "globals": "^17.3.0",
     "husky": "^9.1.7",
-    "lint-staged": "^16.2.7"
+    "lint-staged": "^16.2.7",
+    "playwright": "^1.60.0"
   },
   "lint-staged": {
     "**/*.js": "eslint"

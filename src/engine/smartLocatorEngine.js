@@ -74,25 +74,73 @@ window.__locatorEngines.processAfterSelector = function (
   const trimmed = afterSelector.trim();
 
   if (trimmed.startsWith("+")) {
-    const selector = trimmed.substring(1).trim();
+    const afterPlus = trimmed.substring(1).trim();
     const nextElements = [];
     elements.forEach((el) => {
       const next = el.nextElementSibling;
-      if (next && window.__locatorEngines.matchesSelector(next, selector)) {
-        nextElements.push(next);
+      if (!next) return;
+
+      // Try direct match first (e.g. "+ button")
+      let directMatch = false;
+      try { directMatch = next.matches(afterPlus); } catch {}
+      if (directMatch) { nextElements.push(next); return; }
+
+      // Handle compound selectors like "+ tr span": split at first combinator
+      // outside of quotes/parens to get sibling selector vs. descendant selector
+      let depth = 0, inQ = false, qChar = null, splitAt = -1;
+      for (let i = 0; i < afterPlus.length; i++) {
+        const c = afterPlus[i];
+        if (inQ) { if (c === qChar) inQ = false; }
+        else if (c === '"' || c === "'") { inQ = true; qChar = c; }
+        else if (c === '(' || c === '[') depth++;
+        else if (c === ')' || c === ']') depth--;
+        else if (depth === 0 && (c === ' ' || c === '\t' || c === '>')) { splitAt = i; break; }
+      }
+      if (splitAt > 0) {
+        const sibSel = afterPlus.substring(0, splitAt).trim();
+        const descSel = afterPlus.substring(splitAt).trim();
+        let sibMatch = false;
+        try { sibMatch = next.matches(sibSel); } catch {}
+        if (sibMatch && descSel) {
+          const desc = window.__locatorEngines.findBySmartLocator(descSel, next);
+          if (Array.isArray(desc)) nextElements.push(...desc);
+        }
       }
     });
     return nextElements;
   }
 
   if (trimmed.startsWith("~")) {
-    const selector = trimmed.substring(1).trim();
+    const afterTilde = trimmed.substring(1).trim();
     const nextElements = [];
     elements.forEach((el) => {
       let next = el.nextElementSibling;
       while (next) {
-        if (window.__locatorEngines.matchesSelector(next, selector)) {
-          nextElements.push(next);
+        // Try direct match first (e.g. "~ li")
+        let directMatch = false;
+        try { directMatch = next.matches(afterTilde); } catch {}
+        if (directMatch) { nextElements.push(next); }
+        else {
+          // Handle compound selectors like "~ tr span"
+          let depth = 0, inQ = false, qChar = null, splitAt = -1;
+          for (let i = 0; i < afterTilde.length; i++) {
+            const c = afterTilde[i];
+            if (inQ) { if (c === qChar) inQ = false; }
+            else if (c === '"' || c === "'") { inQ = true; qChar = c; }
+            else if (c === '(' || c === '[') depth++;
+            else if (c === ')' || c === ']') depth--;
+            else if (depth === 0 && (c === ' ' || c === '\t' || c === '>')) { splitAt = i; break; }
+          }
+          if (splitAt > 0) {
+            const sibSel = afterTilde.substring(0, splitAt).trim();
+            const descSel = afterTilde.substring(splitAt).trim();
+            let sibMatch = false;
+            try { sibMatch = next.matches(sibSel); } catch {}
+            if (sibMatch && descSel) {
+              const desc = window.__locatorEngines.findBySmartLocator(descSel, next);
+              if (Array.isArray(desc)) nextElements.push(...desc);
+            }
+          }
         }
         next = next.nextElementSibling;
       }
